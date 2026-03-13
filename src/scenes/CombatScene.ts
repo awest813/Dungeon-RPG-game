@@ -21,10 +21,20 @@ import { isHero } from "../types/GameTypes";
  * Layout:
  *   Heroes on the left (negative X), Enemies on the right (positive X).
  *   A simple HTML panel shows HP, turn info, skill buttons, and the combat log.
+ *
+ * Player interaction flow:
+ *   1. Click a skill button  →  if the skill needs a target, enter "target selection" mode
+ *   2. Click a target button →  execute the skill and re-render the UI
  */
 export class CombatScene extends BaseScene {
   private manager!: CombatManager;
   private combatantMeshes: Map<string, ReturnType<typeof MeshBuilder.CreateBox>> = new Map();
+
+  /**
+   * When set, the player has chosen a skill and must now pick a target.
+   * null = no pending skill (normal skill-selection mode).
+   */
+  private pendingSkillId: string | null = null;
 
   constructor(engine: Engine, private onReturnToTown: () => void) {
     super(engine);
@@ -108,56 +118,77 @@ export class CombatScene extends BaseScene {
       return;
     }
 
-    // Status bar
+    // Status bar (HP + active status effects)
     ui.appendChild(this.buildStatusBar());
-    // Actor row
+    // Current actor display
     ui.appendChild(this.buildActorRow());
-    // Skill buttons
-    ui.appendChild(this.buildSkillButtons());
-    // Log
+    // Skill buttons OR target selection buttons
+    ui.appendChild(this.buildActionRow());
+    // Combat log
     ui.appendChild(this.buildLog());
 
     document.body.appendChild(ui);
   }
 
+  // ─── Status bar ───────────────────────────────────────────────────────────
+
   private buildStatusBar(): HTMLElement {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; gap:24px; font-size:0.9rem;";
+    row.style.cssText = "display:flex; gap:24px; font-size:0.85rem; flex-wrap:wrap;";
 
     const heroes = this.manager.getHeroes();
     const enemies = this.manager.getEnemies();
 
-    const heroSpans = heroes.map(
-      (h) => `<span style="color:${h.stats.hp > 0 ? "#8ab4f8" : "#555"}">${h.name}: ${h.stats.hp}/${h.stats.maxHp}</span>`
-    );
-    const enemySpans = enemies.map(
-      (e) => `<span style="color:${e.stats.hp > 0 ? "#f88" : "#555"}">${e.name}: ${e.stats.hp}/${e.stats.maxHp}</span>`
-    );
+    const heroSpans = heroes.map((h) => {
+      const alive = h.stats.hp > 0;
+      const statuses = h.statusEffects
+        .map((s) => `<span style="color:#f0c060" title="${s.name} (${s.duration}t)">[${s.name.slice(0, 3)}]</span>`)
+        .join("");
+      return `<span style="color:${alive ? "#8ab4f8" : "#555"}">${h.name}: ${h.stats.hp}/${h.stats.maxHp} ${statuses}</span>`;
+    });
+
+    const enemySpans = enemies.map((e) => {
+      const alive = e.stats.hp > 0;
+      const statuses = e.statusEffects
+        .map((s) => `<span style="color:#f0a030" title="${s.name} (${s.duration}t)">[${s.name.slice(0, 3)}]</span>`)
+        .join("");
+      return `<span style="color:${alive ? "#f88" : "#555"}">${e.name}: ${e.stats.hp}/${e.stats.maxHp} ${statuses}</span>`;
+    });
 
     row.innerHTML = `
-      <span>Heroes: ${heroSpans.join(" | ")}</span>
-      <span>Enemies: ${enemySpans.join(" | ")}</span>
+      <span>Heroes — ${heroSpans.join(" &nbsp;|&nbsp; ")}</span>
+      <span>Enemies — ${enemySpans.join(" &nbsp;|&nbsp; ")}</span>
     `;
     return row;
   }
+
+  // ─── Actor row ────────────────────────────────────────────────────────────
 
   private buildActorRow(): HTMLElement {
     const actor = this.manager.getCurrentActor();
     const div = document.createElement("div");
     div.style.cssText = "font-size:1rem; font-weight:bold;";
-    div.textContent = actor
-      ? `Turn: ${actor.name} (Round ${this.manager.getRound()})`
-      : "Waiting…";
+
+    if (this.pendingSkillId) {
+      const skill = SKILLS[this.pendingSkillId];
+      div.textContent = `${actor?.name ?? "?"} — Choose a target for ${skill?.name ?? this.pendingSkillId}:`;
+    } else {
+      div.textContent = actor
+        ? `Turn: ${actor.name} (Round ${this.manager.getRound()})`
+        : "Waiting…";
+    }
     return div;
   }
 
-  private buildSkillButtons(): HTMLElement {
+  // ─── Action row: skill buttons or target selection ────────────────────────
+
+  private buildActionRow(): HTMLElement {
     const actor = this.manager.getCurrentActor();
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
+    row.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; align-items:center;";
 
     if (!actor || !isHero(actor)) {
-      // Enemy turn — auto-resolve
+      // Enemy turn — auto-resolve button
       const autoBtn = this.createButton("Enemy acting…", "#555", () => {
         const out = this.manager.executeEnemyTurn();
         if (out) {
@@ -165,33 +196,99 @@ export class CombatScene extends BaseScene {
           this.renderUI();
         }
       });
-      autoBtn.style.cursor = "pointer";
       row.appendChild(autoBtn);
       return row;
     }
 
-    // Build one button per skill
-    const enemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
-    const allies = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
+    // ── Target selection mode ────────────────────────────────────────────────
+    if (this.pendingSkillId) {
+      const skill = SKILLS[this.pendingSkillId];
 
-    for (const skillId of actor.skillIds) {
-      const btn = this.createButton(skillId, "#3a1e0e", () => {
-        // Choose target based on skill type (simple: first living enemy or first ally or self)
-        const skill = SKILLS[skillId];
-        let targetId = actor.id;
-        if (skill?.targetType === "single_enemy" && enemies.length > 0) {
-          targetId = enemies[0].id;
-        } else if (skill?.targetType === "single_ally" && allies.length > 0) {
-          targetId = allies[0].id;
-        }
-        this.manager.executeAction(skillId, targetId);
-        this.updateMeshVisibility();
+      if (skill?.targetType === "single_enemy") {
+        const livingEnemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
+        livingEnemies.forEach((e) => {
+          const btn = this.createButton(e.name, "#3a0e0e", () => {
+            this.manager.executeAction(this.pendingSkillId!, e.id);
+            this.pendingSkillId = null;
+            this.updateMeshVisibility();
+            this.renderUI();
+          });
+          row.appendChild(btn);
+        });
+      } else if (skill?.targetType === "single_ally") {
+        const livingAllies = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
+        livingAllies.forEach((h) => {
+          const btn = this.createButton(h.name, "#0e1e3a", () => {
+            this.manager.executeAction(this.pendingSkillId!, h.id);
+            this.pendingSkillId = null;
+            this.updateMeshVisibility();
+            this.renderUI();
+          });
+          row.appendChild(btn);
+        });
+      }
+
+      // Cancel button
+      const cancelBtn = this.createButton("✕ Cancel", "#2a2a2a", () => {
+        this.pendingSkillId = null;
         this.renderUI();
       });
+      row.appendChild(cancelBtn);
+      return row;
+    }
+
+    // ── Skill selection mode ─────────────────────────────────────────────────
+    const livingEnemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
+    const livingAllies = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
+
+    for (const skillId of actor.skillIds) {
+      const skill = SKILLS[skillId];
+      const cd = this.manager.getSkillCooldown(actor.id, skillId);
+      const onCooldown = cd > 0;
+
+      const label = onCooldown
+        ? `${skill?.name ?? skillId} (${cd}t)`
+        : (skill?.name ?? skillId);
+
+      const btn = this.createButton(label, onCooldown ? "#222" : "#3a1e0e", () => {
+        if (!skill || onCooldown) return;
+
+        if (skill.targetType === "self") {
+          // No target selection needed — use immediately
+          this.manager.executeAction(skillId, actor.id);
+          this.updateMeshVisibility();
+          this.renderUI();
+        } else if (
+          (skill.targetType === "single_enemy" && livingEnemies.length === 1) ||
+          (skill.targetType === "single_ally" && livingAllies.length === 1)
+        ) {
+          // Only one valid target — auto-select it
+          const targetId =
+            skill.targetType === "single_enemy" ? livingEnemies[0].id : livingAllies[0].id;
+          this.manager.executeAction(skillId, targetId);
+          this.updateMeshVisibility();
+          this.renderUI();
+        } else {
+          // Multiple targets — enter target selection mode
+          this.pendingSkillId = skillId;
+          this.renderUI();
+        }
+      });
+
+      if (onCooldown) {
+        btn.style.color = "#666";
+        btn.style.cursor = "not-allowed";
+        btn.title = `On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining`;
+      } else if (skill) {
+        btn.title = skill.description;
+      }
+
       row.appendChild(btn);
     }
     return row;
   }
+
+  // ─── Combat log ───────────────────────────────────────────────────────────
 
   private buildLog(): HTMLElement {
     const log = this.manager.getLog();
@@ -206,6 +303,8 @@ export class CombatScene extends BaseScene {
       .join("");
     return div;
   }
+
+  // ─── End screen ───────────────────────────────────────────────────────────
 
   private buildEndUI(state: "victory" | "defeat"): HTMLElement {
     const div = document.createElement("div");
@@ -222,12 +321,14 @@ export class CombatScene extends BaseScene {
     return div;
   }
 
+  // ─── Utility ──────────────────────────────────────────────────────────────
+
   private createButton(label: string, bg: string, onClick: () => void): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.style.cssText = `
       padding: 6px 16px; background: ${bg}; color: #c8a96e;
       border: 1px solid #c8a96e; font-family: serif; font-size: 0.95rem;
-      cursor: pointer; border-radius: 3px; text-transform: capitalize;
+      cursor: pointer; border-radius: 3px;
     `;
     btn.textContent = label;
     btn.addEventListener("click", onClick);

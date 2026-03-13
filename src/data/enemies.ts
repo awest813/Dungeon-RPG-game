@@ -32,4 +32,19 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     statusEffects: [],
     lanePosition: 0,
   },
+  {
+    id: "enemy_skeleton_mage",
+    name: "Skeleton Mage",
+    stats: {
+      maxHp: 35,
+      hp: 35,
+      attack: 9,
+      defense: 1,
+      speed: 7,
+      damageReduction: 0,
+    },
+    skillIds: ["poison_dart", "slash"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
 ];

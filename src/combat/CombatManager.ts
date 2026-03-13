@@ -11,6 +11,7 @@ import { SKILLS } from "../data/skills";
  * - advancing turns
  * - triggering status ticks
  * - detecting victory / defeat
+ * - tracking per-hero skill cooldowns
  */
 export class CombatManager {
   private heroes: Hero[];
@@ -64,6 +65,15 @@ export class CombatManager {
   getRound(): number { return this.round; }
   getLog(): string[] { return [...this.log]; }
 
+  /**
+   * Returns the remaining cooldown turns for a hero's skill.
+   * 0 means the skill is ready to use.
+   */
+  getSkillCooldown(heroId: string, skillId: string): number {
+    const hero = this.heroes.find((h) => h.id === heroId);
+    return hero?.skillCooldowns[skillId] ?? 0;
+  }
+
   // ─── Turn execution ────────────────────────────────────────────────────────
 
   /**
@@ -82,6 +92,17 @@ export class CombatManager {
       };
     }
 
+    // Guard against using a skill that is still on cooldown
+    if (isHero(actor)) {
+      const cd = actor.skillCooldowns[skillId] ?? 0;
+      if (cd > 0) {
+        return {
+          result: { actorId: actor.id, targetId, skillId, hpChange: 0, message: `${actor.name}'s ${skillId} is on cooldown (${cd} turns remaining).` },
+          state: this.getBattleState(),
+        };
+      }
+    }
+
     const target = this.findCombatant(targetId);
     if (!target) {
       return {
@@ -92,6 +113,14 @@ export class CombatManager {
 
     const result = resolveSkill(actor, target, skillId);
     this.log.push(result.message);
+
+    // Set cooldown on the hero after a successful skill use
+    if (isHero(actor)) {
+      const skill = SKILLS[skillId];
+      if (skill?.cooldown) {
+        actor.skillCooldowns[skillId] = skill.cooldown;
+      }
+    }
 
     this.advanceTurn();
 
@@ -125,6 +154,12 @@ export class CombatManager {
 
   /** Called after each combatant's turn. Advances to next living combatant. */
   private advanceTurn(): void {
+    // Tick down cooldowns for the actor that just acted
+    const actor = this.turnOrder[this.currentTurnIndex];
+    if (actor && isHero(actor)) {
+      this.tickCooldowns(actor);
+    }
+
     this.currentTurnIndex += 1;
 
     // Start a new round if we've gone through all combatants
@@ -141,6 +176,18 @@ export class CombatManager {
       // If we hit the end mid-skip, start new round
       if (this.currentTurnIndex >= this.turnOrder.length) {
         this.startNewRound();
+      }
+    }
+  }
+
+  /**
+   * Decrement all skill cooldowns by 1 for a hero after their turn.
+   * Cooldowns reach 0 when ready to use again.
+   */
+  private tickCooldowns(hero: Hero): void {
+    for (const skillId of Object.keys(hero.skillCooldowns)) {
+      if (hero.skillCooldowns[skillId] > 0) {
+        hero.skillCooldowns[skillId] -= 1;
       }
     }
   }
