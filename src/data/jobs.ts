@@ -13,7 +13,7 @@ export const JOBS: Record<string, Job> = {
     id: "ranger",
     name: "Ranger",
     description: "A backline attacker with ranged skills.",
-    skillIds: ["fire_arrow", "heal"],
+    skillIds: ["fire_arrow", "oil_flask", "heal"],
     statBonus: { attack: 4, speed: 2 },
   },
 };

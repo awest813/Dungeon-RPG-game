@@ -17,6 +17,9 @@ export const SAMPLE_HEROES: Hero[] = [
     skillIds: ["slash", "guard"],
     statusEffects: [],
     lanePosition: 0,
+    skillCooldowns: {},
+    xp: 0,
+    level: 1,
   },
   {
     id: "hero_lyra",
@@ -30,8 +33,11 @@ export const SAMPLE_HEROES: Hero[] = [
       speed: 8,
       damageReduction: 0,
     },
-    skillIds: ["fire_arrow", "heal"],
+    skillIds: ["fire_arrow", "oil_flask", "heal"],
     statusEffects: [],
     lanePosition: 1,
+    skillCooldowns: {},
+    xp: 0,
+    level: 1,
   },
 ];

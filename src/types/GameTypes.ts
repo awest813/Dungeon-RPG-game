@@ -69,6 +69,15 @@ export interface Hero {
   statusEffects: StatusEffect[];
   /** Which lane position (0 = front, 1 = back) */
   lanePosition: number;
+  /**
+   * Per-hero skill cooldown tracker.
+   * Maps skillId → remaining turns before the skill can be used again (0 = ready).
+   */
+  skillCooldowns: Record<string, number>;
+  /** Experience points accumulated across battles */
+  xp: number;
+  /** Current level (starts at 1) */
+  level: number;
 }
 
 /** An enemy combatant */
