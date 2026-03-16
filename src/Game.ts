@@ -23,6 +23,8 @@ export class Game {
   private heroes: Hero[];
   /** Gold accumulated from completed dungeon runs. */
   private gold: number = 0;
+  /** Number of completed dungeon runs; used to scale enemy difficulty. */
+  private dungeonDepth: number = 0;
   /** Active dungeon run (null when in town). */
   private dungeon: DungeonManager | null = null;
 
@@ -55,6 +57,7 @@ export class Game {
       new TownScene(this.engine, {
         heroes: this.heroes,
         getGold: () => this.gold,
+        dungeonDepth: this.dungeonDepth,
         onUpgrade: (type) => this.applyUpgrade(type),
         onEnterDungeon: () => this.goToDungeon(),
       })
@@ -62,7 +65,7 @@ export class Game {
   }
 
   private goToDungeon(): void {
-    this.dungeon = new DungeonManager(this.heroes);
+    this.dungeon = new DungeonManager(this.heroes, this.dungeonDepth);
     this.goToNextEncounter();
   }
 
@@ -86,6 +89,7 @@ export class Game {
 
     if (this.dungeon!.isComplete()) {
       this.gold += this.dungeon!.getGoldEarned();
+      this.dungeonDepth += 1;
       this.dungeon = null;
       this.goToTown();
     } else {

@@ -4,41 +4,10 @@ import { SAMPLE_ENEMIES } from "../data/enemies";
 /**
  * DungeonManager — orchestrates multi-encounter dungeon runs.
  *
- * ──────────────────────────────────────────────────────────────────────────────
- * NEXT MILESTONE: Dungeon Progression System
- * ──────────────────────────────────────────────────────────────────────────────
- *
- * Planned features for the next development milestone:
- *
- * 1. ENCOUNTER PROGRESSION
- *    - A dungeon consists of N sequential encounters (e.g. 3 fights).
- *    - Heroes persist between encounters with their HP from the previous fight.
- *    - After clearing all encounters the dungeon is "complete" and the party
- *      returns to town with rewards.
- *
- * 2. EXPERIENCE & LEVELING
- *    - Each defeated enemy awards XP to the surviving heroes.
- *    - Heroes level up when XP crosses a threshold.
- *    - On level-up: increase max HP, attack, and defense slightly.
- *
- * 3. LOOT / REWARDS
- *    - Enemies drop gold on defeat.
- *    - Gold is tracked per-run and handed to the town on completion.
- *    - (Future: add items/equipment in a later milestone.)
- *
- * 4. TOWN UPGRADES (downstream)
- *    - Spend gold in town on upgrades (e.g. Blacksmith → +attack,
- *      Alchemist → +heal power, Inn → restore HP before next dungeon).
- *
- * ──────────────────────────────────────────────────────────────────────────────
- * Implementation notes (TODO for next milestone):
- *   - Replace SAMPLE_ENEMIES with a procedurally chosen encounter list.
- *   - Pass the same hero array through each CombatManager instance so HP
- *     changes persist across encounters.
- *   - Wire DungeonManager into Game.ts: Game calls dungeon.nextEncounter()
- *     after each CombatScene victory, and dungeon.isComplete() to know when
- *     to show the dungeon-complete summary before returning to town.
- * ──────────────────────────────────────────────────────────────────────────────
+ * Each run consists of three sequential encounters.  Heroes carry their
+ * current HP from one encounter to the next.  Enemies are drawn from a
+ * tiered pool and their base stats are scaled by the current dungeon depth
+ * so that repeat runs grow progressively harder.
  */
 // ─── Reward constants (easy to tune) ────────────────────────────────────────
 const BASE_XP_REWARD = 20;           // XP awarded per defeated enemy
@@ -50,6 +19,11 @@ const LEVELUP_MAX_HP   = 5;
 const LEVELUP_ATTACK   = 1;
 const LEVELUP_DEFENSE  = 1;
 
+// ─── Depth scaling per completed run ────────────────────────────────────────
+const DEPTH_HP_SCALE      = 8;  // +maxHp per depth level
+const DEPTH_ATTACK_SCALE  = 2;  // +attack per depth level
+const DEPTH_DEFENSE_SCALE = 1;  // +defense per depth level
+
 export class DungeonManager {
   /** Ordered list of enemy groups for this run. */
   private encounters: Enemy[][];
@@ -58,9 +32,8 @@ export class DungeonManager {
   /** Gold accumulated during this run. */
   private goldEarned: number = 0;
 
-  constructor(private heroes: Hero[], encounters?: Enemy[][]) {
-    // Default to a simple 3-encounter dungeon built from the sample enemy pool
-    this.encounters = encounters ?? DungeonManager.buildDefaultEncounters();
+  constructor(private heroes: Hero[], depth: number = 0) {
+    this.encounters = DungeonManager.buildProceduralEncounters(depth);
   }
 
   // ─── Encounter flow ───────────────────────────────────────────────────────
@@ -150,21 +123,68 @@ export class DungeonManager {
   // ─── Factory ──────────────────────────────────────────────────────────────
 
   /**
-   * Build a simple default 3-encounter dungeon from the sample enemy pool.
-   * Returns deep copies so combat mutations don't affect future encounters.
+   * Build a procedurally generated 3-encounter dungeon.
+   *
+   * Enemies are drawn from three difficulty tiers and their base stats are
+   * scaled by `depth` so that each completed run becomes harder.
+   *
+   * Tier 1 (easy)  : Goblin, Dark Archer
+   * Tier 2 (medium): Skeleton Mage, Dark Archer
+   * Tier 3 (hard)  : Orc Brute, Troll Brute
+   *
+   * Encounter 1 — 1 Tier-1 enemy (depth 0) or 2 Tier-1 enemies (depth ≥ 1)
+   * Encounter 2 — 1 Tier-1 + 1 Tier-2 enemy
+   * Encounter 3 — 1 Tier-3 + 1 Tier-2 enemy (boss encounter)
+   *
+   * Per-depth scaling: +8 maxHp, +2 attack, +1 defense per level.
    */
-  private static buildDefaultEncounters(): Enemy[][] {
-    const clone = (e: Enemy): Enemy => JSON.parse(JSON.stringify(e)) as Enemy;
+  private static buildProceduralEncounters(depth: number): Enemy[][] {
+    // Unique id counter so two enemies of the same type can be targeted individually
+    let seq = 0;
+    const clone = (e: Enemy): Enemy => {
+      const c = JSON.parse(JSON.stringify(e)) as Enemy;
+      c.id = `${e.id}_${seq++}`;
+      return c;
+    };
 
-    const [goblin, orc, skeletonMage] = SAMPLE_ENEMIES;
+    // Build a lookup map from the shared enemy pool
+    const pool: Record<string, Enemy> = Object.fromEntries(
+      SAMPLE_ENEMIES.map((e) => [e.id, e])
+    );
 
-    return [
-      // Encounter 1 — easy opener
-      [clone(goblin), clone(goblin)],
-      // Encounter 2 — moderate threat
-      [clone(goblin), clone(skeletonMage)],
-      // Encounter 3 — boss encounter
-      [clone(orc), clone(skeletonMage)],
-    ];
+    /** Pick and clone a random enemy from a list of ids */
+    const pick = (ids: string[]): Enemy => {
+      const id = ids[Math.floor(Math.random() * ids.length)];
+      const template = pool[id];
+      if (!template) throw new Error(`DungeonManager: unknown enemy id "${id}"`);
+      return clone(template);
+    };
+
+    /** Scale a cloned enemy's stats by the current dungeon depth */
+    const scale = (enemy: Enemy): Enemy => {
+      enemy.stats.maxHp   += depth * DEPTH_HP_SCALE;
+      enemy.stats.hp       = enemy.stats.maxHp;
+      enemy.stats.attack  += depth * DEPTH_ATTACK_SCALE;
+      enemy.stats.defense += depth * DEPTH_DEFENSE_SCALE;
+      return enemy;
+    };
+
+    const tier1 = ["enemy_goblin", "enemy_dark_archer"];
+    const tier2 = ["enemy_skeleton_mage", "enemy_dark_archer"];
+    const tier3 = ["enemy_orc", "enemy_troll"];
+
+    // Encounter 1 — easy opener
+    const enc1: Enemy[] =
+      depth === 0
+        ? [scale(pick(tier1))]
+        : [scale(pick(tier1)), scale(pick(tier1))];
+
+    // Encounter 2 — moderate threat
+    const enc2: Enemy[] = [scale(pick(tier1)), scale(pick(tier2))];
+
+    // Encounter 3 — boss encounter
+    const enc3: Enemy[] = [scale(pick(tier3)), scale(pick(tier2))];
+
+    return [enc1, enc2, enc3];
   }
 }

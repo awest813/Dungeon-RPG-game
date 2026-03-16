@@ -1,6 +1,6 @@
 import type { Enemy } from "../types/GameTypes";
 
-/** Sample enemies for combat encounters. */
+/** All available enemies. Used as templates — always clone before use. */
 export const SAMPLE_ENEMIES: Enemy[] = [
   {
     id: "enemy_goblin",
@@ -44,6 +44,36 @@ export const SAMPLE_ENEMIES: Enemy[] = [
       damageReduction: 0,
     },
     skillIds: ["poison_dart", "slash"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
+  {
+    id: "enemy_troll",
+    name: "Troll Brute",
+    stats: {
+      maxHp: 90,
+      hp: 90,
+      attack: 13,
+      defense: 6,
+      speed: 2,
+      damageReduction: 0,
+    },
+    skillIds: ["slam", "guard"],
+    statusEffects: [],
+    lanePosition: 0,
+  },
+  {
+    id: "enemy_dark_archer",
+    name: "Dark Archer",
+    stats: {
+      maxHp: 45,
+      hp: 45,
+      attack: 10,
+      defense: 2,
+      speed: 9,
+      damageReduction: 0,
+    },
+    skillIds: ["weaken_shot", "slash"],
     statusEffects: [],
     lanePosition: 1,
   },

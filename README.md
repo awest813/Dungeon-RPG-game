@@ -71,6 +71,30 @@ Multi-encounter dungeon runs with persistent hero state, XP-based leveling, gold
 
 ---
 
+## ✅ Milestone 3 — Procedural Dungeon Generation & Expanded Content (Complete)
+
+Procedurally generated encounters that scale with each completed run, plus two new enemies and two new skills.
+
+| Feature | Status |
+|---|---|
+| **Procedural encounter generation** (tiered enemy pool, random composition) | ✅ |
+| **Dungeon depth scaling** (enemy HP, ATK, DEF increase per completed run) | ✅ |
+| **New enemy: Troll Brute** (high HP/ATK, uses Slam + Guard) | ✅ |
+| **New enemy: Dark Archer** (high speed, uses Weaken Shot + Slash) | ✅ |
+| **New skill: Slam** (heavy single-target damage, power 16) | ✅ |
+| **New skill: Weaken Shot** (applies Weaken — −4 ATK / −2 DEF for 2 turns) | ✅ |
+| **Unique enemy IDs** (two enemies of the same type can be targeted individually) | ✅ |
+| **Dungeon depth display** in Town UI | ✅ |
+
+### Architecture changes
+
+- `DungeonManager` constructor now accepts a `depth: number` parameter (default 0).
+- `buildProceduralEncounters(depth)` replaces the hardcoded `buildDefaultEncounters()`: enemies are drawn from three difficulty tiers and stat-scaled by depth.
+- `Game.ts` tracks `dungeonDepth` (incremented on each completed run) and passes it to `DungeonManager` and `TownScene`.
+- Cloned enemies receive unique sequential IDs so the player can target each one independently.
+
+---
+
 ## 🏗 Architecture
 
 ```
