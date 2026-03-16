@@ -2,6 +2,22 @@ import type { Enemy } from "../types/GameTypes";
 
 /** All available enemies. Used as templates — always clone before use. */
 export const SAMPLE_ENEMIES: Enemy[] = [
+  // ─── Tier 0: Intro encounters ─────────────────────────────────────────────
+  {
+    id: "enemy_giant_rat",
+    name: "Giant Rat",
+    stats: {
+      maxHp: 25,
+      hp: 25,
+      attack: 5,
+      defense: 1,
+      speed: 9,
+      damageReduction: 0,
+    },
+    skillIds: ["bite", "slash"],
+    statusEffects: [],
+    lanePosition: 0,
+  },
   {
     id: "enemy_goblin",
     name: "Goblin",
@@ -17,6 +33,38 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     statusEffects: [],
     lanePosition: 0,
   },
+  // ─── Tier 1: Early encounters ─────────────────────────────────────────────
+  {
+    id: "enemy_zombie",
+    name: "Zombie",
+    stats: {
+      maxHp: 60,
+      hp: 60,
+      attack: 8,
+      defense: 3,
+      speed: 2,
+      damageReduction: 0,
+    },
+    skillIds: ["claw_rake", "undead_regenerate"],
+    statusEffects: [],
+    lanePosition: 0,
+  },
+  {
+    id: "enemy_giant_spider",
+    name: "Giant Spider",
+    stats: {
+      maxHp: 45,
+      hp: 45,
+      attack: 8,
+      defense: 2,
+      speed: 8,
+      damageReduction: 0,
+    },
+    skillIds: ["venomous_bite", "slash"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
+  // ─── Tier 2: Mid encounters ───────────────────────────────────────────────
   {
     id: "enemy_orc",
     name: "Orc Brute",
@@ -48,6 +96,52 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     lanePosition: 1,
   },
   {
+    id: "enemy_dark_archer",
+    name: "Dark Archer",
+    stats: {
+      maxHp: 45,
+      hp: 45,
+      attack: 10,
+      defense: 2,
+      speed: 9,
+      damageReduction: 0,
+    },
+    skillIds: ["weaken_shot", "slash"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
+  {
+    id: "enemy_harpy",
+    name: "Harpy",
+    stats: {
+      maxHp: 50,
+      hp: 50,
+      attack: 11,
+      defense: 3,
+      speed: 10,
+      damageReduction: 0,
+    },
+    skillIds: ["claw_rake", "screech"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
+  {
+    id: "enemy_wight",
+    name: "Wight",
+    stats: {
+      maxHp: 65,
+      hp: 65,
+      attack: 12,
+      defense: 4,
+      speed: 5,
+      damageReduction: 0,
+    },
+    skillIds: ["life_drain", "claw_rake"],
+    statusEffects: [],
+    lanePosition: 0,
+  },
+  // ─── Tier 3: Hard encounters ──────────────────────────────────────────────
+  {
     id: "enemy_troll",
     name: "Troll Brute",
     stats: {
@@ -63,18 +157,49 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     lanePosition: 0,
   },
   {
-    id: "enemy_dark_archer",
-    name: "Dark Archer",
+    id: "enemy_minotaur",
+    name: "Minotaur",
     stats: {
-      maxHp: 45,
-      hp: 45,
-      attack: 10,
-      defense: 2,
-      speed: 9,
+      maxHp: 100,
+      hp: 100,
+      attack: 15,
+      defense: 7,
+      speed: 3,
       damageReduction: 0,
     },
-    skillIds: ["weaken_shot", "slash"],
+    skillIds: ["charge", "rend", "guard"],
     statusEffects: [],
-    lanePosition: 1,
+    lanePosition: 0,
+  },
+  {
+    id: "enemy_basilisk",
+    name: "Basilisk",
+    stats: {
+      maxHp: 75,
+      hp: 75,
+      attack: 11,
+      defense: 5,
+      speed: 4,
+      damageReduction: 0,
+    },
+    skillIds: ["claw_rake", "paralyze_gaze", "bite"],
+    statusEffects: [],
+    lanePosition: 0,
+  },
+  // ─── Tier 4: Boss encounters ──────────────────────────────────────────────
+  {
+    id: "enemy_fire_drake",
+    name: "Fire Drake",
+    stats: {
+      maxHp: 130,
+      hp: 130,
+      attack: 16,
+      defense: 8,
+      speed: 5,
+      damageReduction: 0,
+    },
+    skillIds: ["fire_breath", "slam", "bite"],
+    statusEffects: [],
+    lanePosition: 0,
   },
 ];

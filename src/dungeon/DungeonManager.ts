@@ -125,16 +125,27 @@ export class DungeonManager {
   /**
    * Build a procedurally generated 3-encounter dungeon.
    *
-   * Enemies are drawn from three difficulty tiers and their base stats are
+   * Enemies are drawn from four difficulty tiers and their base stats are
    * scaled by `depth` so that each completed run becomes harder.
    *
-   * Tier 1 (easy)  : Goblin, Dark Archer
-   * Tier 2 (medium): Skeleton Mage, Dark Archer
-   * Tier 3 (hard)  : Orc Brute, Troll Brute
+   * Tier 0 (intro) : Giant Rat, Goblin
+   * Tier 1 (easy)  : Zombie, Giant Spider
+   * Tier 2 (medium): Orc Brute, Skeleton Mage, Dark Archer, Harpy, Wight
+   * Tier 3 (hard)  : Troll Brute, Minotaur, Basilisk
+   * Tier 4 (boss)  : Fire Drake
    *
-   * Encounter 1 — 1 Tier-1 enemy (depth 0) or 2 Tier-1 enemies (depth ≥ 1)
-   * Encounter 2 — 1 Tier-1 + 1 Tier-2 enemy
-   * Encounter 3 — 1 Tier-3 + 1 Tier-2 enemy (boss encounter)
+   * Depth 0:
+   *   Encounter 1 — 1 Tier-0 enemy
+   *   Encounter 2 — 1 Tier-0 + 1 Tier-1 enemy
+   *   Encounter 3 — 1 Tier-2 + 1 Tier-1 enemy
+   *
+   * Depth 1+:
+   *   Encounter 1 — 2 Tier-0/1 enemies
+   *   Encounter 2 — 1 Tier-1 + 1 Tier-2 enemy
+   *   Encounter 3 — 1 Tier-3 + 1 Tier-2 enemy
+   *
+   * Depth 3+:
+   *   Encounter 3 replaces one Tier-3 enemy with the Fire Drake boss
    *
    * Per-depth scaling: +8 maxHp, +2 attack, +1 defense per level.
    */
@@ -169,21 +180,32 @@ export class DungeonManager {
       return enemy;
     };
 
-    const tier1 = ["enemy_goblin", "enemy_dark_archer"];
-    const tier2 = ["enemy_skeleton_mage", "enemy_dark_archer"];
-    const tier3 = ["enemy_orc", "enemy_troll"];
+    const tier0 = ["enemy_giant_rat", "enemy_goblin"];
+    const tier1 = ["enemy_zombie", "enemy_giant_spider"];
+    const tier2 = ["enemy_orc", "enemy_skeleton_mage", "enemy_dark_archer", "enemy_harpy", "enemy_wight"];
+    const tier3 = ["enemy_troll", "enemy_minotaur", "enemy_basilisk"];
+    const tier4 = ["enemy_fire_drake"];
 
-    // Encounter 1 — easy opener
-    const enc1: Enemy[] =
-      depth === 0
-        ? [scale(pick(tier1))]
-        : [scale(pick(tier1)), scale(pick(tier1))];
+    let enc1: Enemy[];
+    let enc2: Enemy[];
+    let enc3: Enemy[];
 
-    // Encounter 2 — moderate threat
-    const enc2: Enemy[] = [scale(pick(tier1)), scale(pick(tier2))];
-
-    // Encounter 3 — boss encounter
-    const enc3: Enemy[] = [scale(pick(tier3)), scale(pick(tier2))];
+    if (depth === 0) {
+      // Gentle introduction
+      enc1 = [scale(pick(tier0))];
+      enc2 = [scale(pick(tier0)), scale(pick(tier1))];
+      enc3 = [scale(pick(tier2)), scale(pick(tier1))];
+    } else if (depth < 3) {
+      // Growing threat
+      enc1 = [scale(pick(tier0)), scale(pick(tier1))];
+      enc2 = [scale(pick(tier1)), scale(pick(tier2))];
+      enc3 = [scale(pick(tier3)), scale(pick(tier2))];
+    } else {
+      // Deep dungeon — boss encounters
+      enc1 = [scale(pick(tier1)), scale(pick(tier2))];
+      enc2 = [scale(pick(tier2)), scale(pick(tier3))];
+      enc3 = [scale(pick(tier4)), scale(pick(tier2))];
+    }
 
     return [enc1, enc2, enc3];
   }

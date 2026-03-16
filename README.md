@@ -95,7 +95,33 @@ Procedurally generated encounters that scale with each completed run, plus two n
 
 ---
 
-## 🏗 Architecture
+## ✅ Milestone 4 — New Enemies, Spells, Status Effects & Mage Class (Complete)
+
+OSR-inspired enemy roster expansion, a full Mage hero class with spells, new status effects, and AoE / drain skill mechanics.
+
+| Feature | Status |
+|---|---|
+| **8 new enemies** from OSR bestiary: Giant Rat, Zombie, Giant Spider, Harpy, Wight, Minotaur, Basilisk, Fire Drake | ✅ |
+| **New status effects**: Bleed (tick damage), Stun (lose turn), Freeze (−speed), Blind (−attack), Fear (−def/−speed), Regenerate (+HP per round) | ✅ |
+| **Drain skill type** — Life Drain deals damage and heals the actor for 50% of damage dealt | ✅ |
+| **AoE skills** — Fire Breath & Fireball hit all enemies; correctly handled in CombatManager and UI | ✅ |
+| **Stun skip-turn mechanic** — stunned heroes/enemies automatically lose their turn | ✅ |
+| **Regen (negative tick)** — Regenerate heals HP each round in StatusSystem | ✅ |
+| **Mage job** with 6 spells: Mana Bolt, Fireball, Ice Lance, Thunderbolt, Arcane Shield, Blinding Flash | ✅ |
+| **Mira (Mage)** added as third hero — backline spellcaster | ✅ |
+| **4-tier encounter system** in DungeonManager: intro / easy / mid / hard, with boss Fire Drake at depth ≥ 3 | ✅ |
+| **13 new skills** added to skills registry | ✅ |
+
+### Architecture changes
+
+- `GameTypes.ts`: added `"drain"` to `SkillType`; added `drainRatio?: number` to `Skill`.
+- `StatusSystem.ts`: 6 new status templates; `tickStatuses` now handles negative `tickDamage` as healing.
+- `SkillResolver.ts`: handles `"drain"` skill type (damage + self-heal).
+- `CombatManager.ts`: `executeAction` handles `all_enemies` / `all_allies` AoE; `processStunIfNeeded()` skips stunned actors; `executeEnemyTurn` calls stun check and routes AoE skills.
+- `CombatScene.ts`: hero stun display + skip button; AoE skills auto-fire without target selection prompt.
+- `DungeonManager.ts`: 4 enemy tiers; depth ≥ 3 unlocks boss-tier Fire Drake encounters.
+
+
 
 ```
 src/
@@ -113,10 +139,10 @@ src/
   dungeon/
     DungeonManager.ts  Multi-encounter dungeon runs (Milestone 2 scaffold)
   data/
-    skills.ts          Skill definitions
-    jobs.ts            Job/class definitions
-    heroes.ts          Starting hero party
-    enemies.ts         Enemy definitions
+    skills.ts          Skill definitions (slash, guard, fire_arrow, oil_flask, heal, poison_dart, slam, weaken_shot + 13 new skills)
+    jobs.ts            Job/class definitions (Warrior, Ranger, Mage)
+    heroes.ts          Starting hero party (Aldric, Lyra, Mira)
+    enemies.ts         Enemy definitions (14 enemies across 4 tiers)
   types/
     GameTypes.ts       Core TypeScript interfaces
 ```

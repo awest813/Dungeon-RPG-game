@@ -16,6 +16,13 @@ export const STATUS_TEMPLATES: Record<string, Omit<StatusEffect, "duration"> & {
     tickDamage: 3,
     flags: ["poisoned"],
   },
+  bleed: {
+    id: "bleed",
+    name: "Bleed",
+    defaultDuration: 3,
+    tickDamage: 4,
+    flags: ["bleeding"],
+  },
   guard: {
     id: "guard",
     name: "Guard",
@@ -36,6 +43,41 @@ export const STATUS_TEMPLATES: Record<string, Omit<StatusEffect, "duration"> & {
     defaultDuration: 2,
     statModifier: { attack: -4, defense: -2 },
     flags: ["weakened"],
+  },
+  stun: {
+    id: "stun",
+    name: "Stun",
+    defaultDuration: 1,
+    flags: ["stunned"],
+  },
+  freeze: {
+    id: "freeze",
+    name: "Freeze",
+    defaultDuration: 2,
+    statModifier: { speed: -4 },
+    flags: ["frozen"],
+  },
+  blind: {
+    id: "blind",
+    name: "Blind",
+    defaultDuration: 2,
+    statModifier: { attack: -5 },
+    flags: ["blinded"],
+  },
+  fear: {
+    id: "fear",
+    name: "Fear",
+    defaultDuration: 2,
+    statModifier: { defense: -3, speed: -2 },
+    flags: ["feared"],
+  },
+  regen: {
+    id: "regen",
+    name: "Regenerate",
+    defaultDuration: 3,
+    // Negative tickDamage = healing per round
+    tickDamage: -5,
+    flags: ["regenerating"],
   },
 };
 
@@ -69,9 +111,16 @@ export function tickStatuses(target: Combatant): string[] {
   const expired: StatusEffect[] = [];
 
   for (const effect of target.statusEffects) {
-    if (effect.tickDamage && effect.tickDamage > 0) {
-      target.stats.hp = Math.max(0, target.stats.hp - effect.tickDamage);
-      log.push(`${target.name} takes ${effect.tickDamage} ${effect.name} damage. (${target.stats.hp}/${target.stats.maxHp} HP)`);
+    if (effect.tickDamage !== undefined && effect.tickDamage !== 0) {
+      if (effect.tickDamage < 0) {
+        // Negative tickDamage = healing (e.g. Regenerate)
+        const healAmount = Math.abs(effect.tickDamage);
+        target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + healAmount);
+        log.push(`${target.name} regenerates ${healAmount} HP. (${target.stats.hp}/${target.stats.maxHp} HP)`);
+      } else {
+        target.stats.hp = Math.max(0, target.stats.hp - effect.tickDamage);
+        log.push(`${target.name} takes ${effect.tickDamage} ${effect.name} damage. (${target.stats.hp}/${target.stats.maxHp} HP)`);
+      }
     }
 
     effect.duration -= 1;

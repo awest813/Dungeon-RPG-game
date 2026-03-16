@@ -218,6 +218,18 @@ export class CombatScene extends BaseScene {
       return row;
     }
 
+    // ── Hero is stunned — show a skip button ─────────────────────────────────
+    if (actor.statusEffects.some((s) => s.flags?.includes("stunned"))) {
+      const stunBtn = this.createButton(`${actor.name} is stunned!`, "#333", () => {
+        this.manager.processStunIfNeeded();
+        this.updateMeshVisibility();
+        this.renderUI();
+      });
+      stunBtn.style.color = "#f0a030";
+      row.appendChild(stunBtn);
+      return row;
+    }
+
     // ── Target selection mode ────────────────────────────────────────────────
     if (this.pendingSkillId) {
       const skill = SKILLS[this.pendingSkillId];
@@ -274,6 +286,11 @@ export class CombatScene extends BaseScene {
         if (skill.targetType === "self") {
           // No target selection needed — use immediately
           this.manager.executeAction(skillId, actor.id);
+          this.updateMeshVisibility();
+          this.renderUI();
+        } else if (skill.targetType === "all_enemies" || skill.targetType === "all_allies") {
+          // AoE — no target selection needed
+          this.manager.executeAction(skillId, "aoe");
           this.updateMeshVisibility();
           this.renderUI();
         } else if (
