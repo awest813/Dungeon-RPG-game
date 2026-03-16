@@ -1,11 +1,12 @@
 import {
+  Color3,
   Color4,
   FreeCamera,
   HemisphericLight,
   MeshBuilder,
-  Vector3,
+  PointLight,
   StandardMaterial,
-  Color3,
+  Vector3,
 } from "@babylonjs/core";
 import type { Engine } from "@babylonjs/core";
 import { BaseScene } from "./BaseScene";
@@ -31,10 +32,11 @@ export interface CombatSceneOptions {
 
 /**
  * CombatScene — handles turn-based combat display and input.
+ * Visual style: Skyrim/Oblivion Elder Scrolls aesthetic.
  *
  * Layout:
  *   Heroes on the left (negative X), Enemies on the right (positive X).
- *   A simple HTML panel shows HP, turn info, skill buttons, and the combat log.
+ *   Bottom HUD: HP/status bars, turn info, skill action slots, combat log.
  *
  * Player interaction flow:
  *   1. Click a skill button  →  if the skill needs a target, enter "target selection" mode
@@ -55,20 +57,64 @@ export class CombatScene extends BaseScene {
   }
 
   init(): void {
-    this.scene.clearColor = new Color4(0.05, 0.04, 0.08, 1);
+    // ── deep dungeon black ─────────────────────────────────────────
+    this.scene.clearColor = new Color4(0.018, 0.016, 0.028, 1);
 
-    // Camera
-    const camera = new FreeCamera("combatCam", new Vector3(0, 8, -14), this.scene);
-    camera.setTarget(Vector3.Zero());
+    // Camera — slightly higher and further back for a dramatic look
+    const camera = new FreeCamera("combatCam", new Vector3(0, 7, -13), this.scene);
+    camera.setTarget(new Vector3(0, 1.5, 0));
 
-    // Lighting
-    const light = new HemisphericLight("combatLight", new Vector3(0, 1, 0), this.scene);
-    light.intensity = 0.9;
+    // Cool dim ambient
+    const ambient = new HemisphericLight("combatAmb", new Vector3(0, 1, 0), this.scene);
+    ambient.intensity = 0.18;
+    ambient.diffuse   = new Color3(0.3, 0.28, 0.35);
+    ambient.groundColor = new Color3(0.06, 0.05, 0.08);
 
-    // Ground
-    MeshBuilder.CreateGround("ground", { width: 16, height: 8 }, this.scene);
+    // Torchlight from the sides
+    const leftTorch = new PointLight("torchL", new Vector3(-6, 3, 0), this.scene);
+    leftTorch.diffuse    = new Color3(1.0, 0.55, 0.1);
+    leftTorch.intensity  = 1.6;
+    leftTorch.range      = 12;
 
-    // Set up combat — heroes are used by reference, enemies are deep-copied inside CombatManager
+    const rightTorch = new PointLight("torchR", new Vector3(6, 3, 0), this.scene);
+    rightTorch.diffuse   = new Color3(1.0, 0.50, 0.08);
+    rightTorch.intensity = 1.6;
+    rightTorch.range     = 12;
+
+    // Flickering effect on the torches
+    let t = 0;
+    this.scene.registerBeforeRender(() => {
+      t += 0.08;
+      const flicker = 1.5 + Math.sin(t * 3.7) * 0.12 + Math.sin(t * 7.1) * 0.06;
+      leftTorch.intensity  = flicker;
+      rightTorch.intensity = flicker * 0.95;
+    });
+
+    // ── Stone dungeon floor ────────────────────────────────────────
+    const floorMat = new StandardMaterial("floorMat", this.scene);
+    floorMat.diffuseColor  = new Color3(0.14, 0.13, 0.16);
+    floorMat.specularColor = new Color3(0.04, 0.04, 0.05);
+    const floor = MeshBuilder.CreateGround("floor", { width: 18, height: 10 }, this.scene);
+    floor.material = floorMat;
+
+    // Back wall
+    const wallMat = new StandardMaterial("wallMat", this.scene);
+    wallMat.diffuseColor  = new Color3(0.18, 0.17, 0.20);
+    wallMat.specularColor = new Color3(0.02, 0.02, 0.02);
+    const wall = MeshBuilder.CreatePlane("wall", { width: 18, height: 8 }, this.scene);
+    wall.position.set(0, 4, 5);
+    wall.material = wallMat;
+
+    // Stone pillars
+    const pillarMat = new StandardMaterial("pillarMat", this.scene);
+    pillarMat.diffuseColor = new Color3(0.22, 0.21, 0.25);
+    for (const x of [-7, 7]) {
+      const pillar = MeshBuilder.CreateCylinder(`pillar_${x}`, { height: 7, diameter: 0.55, tessellation: 8 }, this.scene);
+      pillar.position.set(x, 3.5, 4);
+      pillar.material = pillarMat;
+    }
+
+    // Set up combat
     this.manager = new CombatManager(this.options.heroes, this.options.enemies);
     this.manager.start();
 
@@ -80,23 +126,29 @@ export class CombatScene extends BaseScene {
   // ─── 3D Representation ────────────────────────────────────────────────────
 
   private spawnCombatants(): void {
-    const heroes = this.manager.getHeroes();
+    const heroes  = this.manager.getHeroes();
     const enemies = this.manager.getEnemies();
 
+    // Hero meshes — blue steel tint, slightly taller
     heroes.forEach((h, i) => {
       const mat = new StandardMaterial(`mat_${h.id}`, this.scene);
-      mat.diffuseColor = new Color3(0.2, 0.5, 0.9);
-      const box = MeshBuilder.CreateBox(h.id, { height: 1.8, width: 1, depth: 1 }, this.scene);
-      box.position.set(-4 + i * 2, 0.9, 0);
+      mat.diffuseColor  = new Color3(0.2, 0.38, 0.65);
+      mat.specularColor = new Color3(0.5, 0.6, 0.8);
+      mat.specularPower = 32;
+      const box = MeshBuilder.CreateBox(h.id, { height: 2.0, width: 0.9, depth: 0.6 }, this.scene);
+      box.position.set(-4 + i * 2.2, 1.0, 0);
       box.material = mat;
       this.combatantMeshes.set(h.id, box);
     });
 
+    // Enemy meshes — blood red, slightly menacing
     enemies.forEach((e, i) => {
       const mat = new StandardMaterial(`mat_${e.id}`, this.scene);
-      mat.diffuseColor = new Color3(0.8, 0.2, 0.2);
-      const box = MeshBuilder.CreateBox(e.id, { height: 1.8, width: 1, depth: 1 }, this.scene);
-      box.position.set(3 + i * 2, 0.9, 0);
+      mat.diffuseColor  = new Color3(0.65, 0.12, 0.12);
+      mat.specularColor = new Color3(0.6, 0.2, 0.2);
+      mat.specularPower = 16;
+      const box = MeshBuilder.CreateBox(e.id, { height: 2.0, width: 0.9, depth: 0.6 }, this.scene);
+      box.position.set(3 + i * 2.2, 1.0, 0);
       box.material = mat;
       this.combatantMeshes.set(e.id, box);
     });
@@ -118,10 +170,13 @@ export class CombatScene extends BaseScene {
     ui.id = "combat-ui";
     ui.style.cssText = `
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(10,6,20,0.92); color: #c8a96e;
-      font-family: serif; padding: 12px 16px;
-      display: flex; flex-direction: column; gap: 8px;
-      border-top: 2px solid #c8a96e;
+      background: rgba(6, 6, 10, 0.96);
+      border-top: 1px solid #4e4e5e;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
+      font-family: var(--font-body, 'Cinzel', Georgia, serif);
+      color: #d8ceb8;
+      padding: 10px 14px 10px;
+      display: flex; flex-direction: column; gap: 7px;
     `;
 
     const state = this.manager.getBattleState();
@@ -132,52 +187,117 @@ export class CombatScene extends BaseScene {
       return;
     }
 
-    // Status bar (HP + active status effects)
     ui.appendChild(this.buildStatusBar());
-    // Current actor display
+    ui.appendChild(this.buildDivider());
     ui.appendChild(this.buildActorRow());
-    // Skill buttons OR target selection buttons
     ui.appendChild(this.buildActionRow());
-    // Combat log
     ui.appendChild(this.buildLog());
 
     document.body.appendChild(ui);
   }
 
-  // ─── Status bar ───────────────────────────────────────────────────────────
+  // ─── Combatant status bars ────────────────────────────────────────────────
 
   private buildStatusBar(): HTMLElement {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; gap:24px; font-size:0.85rem; flex-wrap:wrap;";
+    row.style.cssText = "display:flex; gap:10px; flex-wrap:wrap; align-items:stretch;";
 
-    const heroes = this.manager.getHeroes();
+    const heroes  = this.manager.getHeroes();
     const enemies = this.manager.getEnemies();
 
-    const heroSpans = heroes.map((h) => {
-      const alive = h.stats.hp > 0;
-      const statuses = h.statusEffects
-        .map((s) => `<span style="color:#f0c060" title="${s.name} (${s.duration}t)">[${s.name.slice(0, 3)}]</span>`)
-        .join("");
-      return `<span style="color:${alive ? "#8ab4f8" : "#555"}">${h.name}: ${h.stats.hp}/${h.stats.maxHp} ${statuses}</span>`;
-    });
+    // Heroes side
+    const heroGroup = document.createElement("div");
+    heroGroup.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; flex:1;";
+    heroes.forEach((h) => heroGroup.appendChild(this.buildCombatantCard(h, "hero")));
+    row.appendChild(heroGroup);
 
-    const enemySpans = enemies.map((e) => {
-      const alive = e.stats.hp > 0;
-      const statuses = e.statusEffects
-        .map((s) => `<span style="color:#f0a030" title="${s.name} (${s.duration}t)">[${s.name.slice(0, 3)}]</span>`)
-        .join("");
-      return `<span style="color:${alive ? "#f88" : "#555"}">${e.name}: ${e.stats.hp}/${e.stats.maxHp} ${statuses}</span>`;
-    });
-
-    // Encounter progress indicator
-    const enc = `<span style="color:#888; font-size:0.8rem">Encounter ${this.options.encounterNum}/${this.options.totalEncounters}</span>`;
-
-    row.innerHTML = `
-      <span>Heroes — ${heroSpans.join(" &nbsp;|&nbsp; ")}</span>
-      <span>Enemies — ${enemySpans.join(" &nbsp;|&nbsp; ")}</span>
-      ${enc}
+    // Encounter progress
+    const enc = document.createElement("div");
+    enc.style.cssText = `
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding: 2px 10px; border-left: 1px solid #2e2e3e; border-right: 1px solid #2e2e3e;
+      font-size:0.62rem; color:#5a5a6a; letter-spacing:1px; text-transform:uppercase; white-space:nowrap;
     `;
+    enc.innerHTML = `
+      <span style="color:#4e4e5e; font-size:0.55rem;">Encounter</span>
+      <span style="color:#8a8a9a; font-size:0.8rem; font-weight:600;">${this.options.encounterNum}/${this.options.totalEncounters}</span>
+    `;
+    row.appendChild(enc);
+
+    // Enemies side
+    const enemyGroup = document.createElement("div");
+    enemyGroup.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; flex:1; justify-content:flex-end;";
+    enemies.forEach((e) => enemyGroup.appendChild(this.buildCombatantCard(e, "enemy")));
+    row.appendChild(enemyGroup);
+
     return row;
+  }
+
+  private buildCombatantCard(c: Hero | Enemy, side: "hero" | "enemy"): HTMLElement {
+    const alive  = c.stats.hp > 0;
+    const hpPct  = alive ? Math.max(0, Math.round((c.stats.hp / c.stats.maxHp) * 100)) : 0;
+    const isH    = isHero(c);
+    const nameColor = alive ? (side === "hero" ? "#aec8e8" : "#e89090") : "#404050";
+
+    const card = document.createElement("div");
+    card.style.cssText = `
+      display: flex; flex-direction: column; gap: 2px;
+      min-width: 90px; max-width: 130px;
+    `;
+
+    // Name + statuses
+    const nameRow = document.createElement("div");
+    nameRow.style.cssText = "display:flex; align-items:center; gap:4px; flex-wrap:wrap;";
+    const nameEl = document.createElement("span");
+    nameEl.style.cssText = `font-size:0.72rem; color:${nameColor}; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`;
+    nameEl.textContent = c.name;
+    nameRow.appendChild(nameEl);
+
+    if (alive) {
+      c.statusEffects.forEach((s) => {
+        const badge = document.createElement("span");
+        badge.style.cssText = "font-size:0.55rem; color:#c89a3e; background:#1e1808; border:1px solid #5a4a1e; padding:1px 3px; border-radius:1px; white-space:nowrap;";
+        badge.title = `${s.name} (${s.duration}t)`;
+        badge.textContent = s.name.slice(0, 3).toUpperCase();
+        nameRow.appendChild(badge);
+      });
+    }
+    card.appendChild(nameRow);
+
+    // HP bar — colour shifts from dark red → orange-red → bright red as HP drops
+    const HP_COLOR_HIGH = "#8a2020";   // > 50 % HP  (matches --es-hp)
+    const HP_COLOR_MED  = "#b03020";   // 26–50 % HP
+    const HP_COLOR_LOW  = "#d04030";   // ≤ 25 % HP  (matches --es-hp-bright)
+    const hpWrap = document.createElement("div");
+    hpWrap.style.cssText = "width:100%; height:6px; background:#1a1a22; border:1px solid #2e2e3e; overflow:hidden; border-radius:1px;";
+    hpWrap.title = `HP ${c.stats.hp}/${c.stats.maxHp}`;
+    const hpFill = document.createElement("div");
+    const hpColor = hpPct > 50 ? HP_COLOR_HIGH : hpPct > 25 ? HP_COLOR_MED : HP_COLOR_LOW;
+    hpFill.style.cssText = `height:100%; width:${hpPct}%; background:${hpColor}; transition:width 0.3s;`;
+    hpWrap.appendChild(hpFill);
+    card.appendChild(hpWrap);
+
+    // HP text
+    const hpText = document.createElement("div");
+    hpText.style.cssText = `font-size:0.58rem; color:${alive ? "#6a6a7a" : "#404050"}; letter-spacing:0.5px;`;
+    hpText.textContent = alive ? `${c.stats.hp} / ${c.stats.maxHp}` : "Fallen";
+    card.appendChild(hpText);
+
+    // XP bar for heroes
+    if (isH && alive) {
+      const hero = c as Hero;
+      const xpNeed = hero.level * 50;
+      const xpPct  = Math.min(100, Math.round((hero.xp / xpNeed) * 100));
+      const xpWrap = document.createElement("div");
+      xpWrap.style.cssText = "width:100%; height:3px; background:#1a1a22; border:1px solid #2e2e3e; overflow:hidden; border-radius:1px;";
+      xpWrap.title = `XP ${hero.xp}/${xpNeed}`;
+      const xpFill = document.createElement("div");
+      xpFill.style.cssText = `height:100%; width:${xpPct}%; background:#2a5a9a; transition:width 0.3s;`;
+      xpWrap.appendChild(xpFill);
+      card.appendChild(xpWrap);
+    }
+
+    return card;
   }
 
   // ─── Actor row ────────────────────────────────────────────────────────────
@@ -185,15 +305,15 @@ export class CombatScene extends BaseScene {
   private buildActorRow(): HTMLElement {
     const actor = this.manager.getCurrentActor();
     const div = document.createElement("div");
-    div.style.cssText = "font-size:1rem; font-weight:bold;";
+    div.style.cssText = "font-size:0.8rem; color:#8a8a9a; letter-spacing:0.5px;";
 
     if (this.pendingSkillId) {
       const skill = SKILLS[this.pendingSkillId];
-      div.textContent = `${actor?.name ?? "?"} — Choose a target for ${skill?.name ?? this.pendingSkillId}:`;
+      div.innerHTML = `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor?.name ?? "?"}</span> — choose a target for <span style="color:#d4a840;">${skill?.name ?? this.pendingSkillId}</span>`;
     } else {
-      div.textContent = actor
-        ? `Turn: ${actor.name} (Round ${this.manager.getRound()})`
-        : "Waiting…";
+      div.innerHTML = actor
+        ? `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor.name}</span> — Round <span style="color:#d8ceb8;">${this.manager.getRound()}</span>`
+        : `<span style="color:#6a6a7a;">Waiting…</span>`;
     }
     return div;
   }
@@ -203,11 +323,10 @@ export class CombatScene extends BaseScene {
   private buildActionRow(): HTMLElement {
     const actor = this.manager.getCurrentActor();
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; align-items:center;";
+    row.style.cssText = "display:flex; gap:6px; flex-wrap:wrap; align-items:center;";
 
     if (!actor || !isHero(actor)) {
-      // Enemy turn — auto-resolve button
-      const autoBtn = this.createButton("Enemy acting…", "#555", () => {
+      const autoBtn = this.makeBtn("Enemy acting…", "muted", () => {
         const out = this.manager.executeEnemyTurn();
         if (out) {
           this.updateMeshVisibility();
@@ -218,101 +337,88 @@ export class CombatScene extends BaseScene {
       return row;
     }
 
-    // ── Hero is stunned — show a skip button ─────────────────────────────────
+    // Stunned hero
     if (actor.statusEffects.some((s) => s.flags?.includes("stunned"))) {
-      const stunBtn = this.createButton(`${actor.name} is stunned!`, "#333", () => {
+      const stunBtn = this.makeBtn(`${actor.name} is Stunned — Skip Turn`, "muted", () => {
         this.manager.processStunIfNeeded();
         this.updateMeshVisibility();
         this.renderUI();
       });
-      stunBtn.style.color = "#f0a030";
+      stunBtn.style.color = "#c89a3e";
+      stunBtn.style.borderColor = "#6a5a1e";
       row.appendChild(stunBtn);
       return row;
     }
 
-    // ── Target selection mode ────────────────────────────────────────────────
+    // Target selection mode
     if (this.pendingSkillId) {
       const skill = SKILLS[this.pendingSkillId];
 
       if (skill?.targetType === "single_enemy") {
-        const livingEnemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
-        livingEnemies.forEach((e) => {
-          const btn = this.createButton(e.name, "#3a0e0e", () => {
+        this.manager.getEnemies().filter((e) => e.stats.hp > 0).forEach((e) => {
+          row.appendChild(this.makeBtn(e.name, "enemy", () => {
             this.manager.executeAction(this.pendingSkillId!, e.id);
             this.pendingSkillId = null;
             this.updateMeshVisibility();
             this.renderUI();
-          });
-          row.appendChild(btn);
+          }));
         });
       } else if (skill?.targetType === "single_ally") {
-        const livingAllies = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
-        livingAllies.forEach((h) => {
-          const btn = this.createButton(h.name, "#0e1e3a", () => {
+        this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id).forEach((h) => {
+          row.appendChild(this.makeBtn(h.name, "ally", () => {
             this.manager.executeAction(this.pendingSkillId!, h.id);
             this.pendingSkillId = null;
             this.updateMeshVisibility();
             this.renderUI();
-          });
-          row.appendChild(btn);
+          }));
         });
       }
 
-      // Cancel button
-      const cancelBtn = this.createButton("✕ Cancel", "#2a2a2a", () => {
+      // Cancel
+      row.appendChild(this.makeBtn("✕  Cancel", "muted", () => {
         this.pendingSkillId = null;
         this.renderUI();
-      });
-      row.appendChild(cancelBtn);
+      }));
       return row;
     }
 
-    // ── Skill selection mode ─────────────────────────────────────────────────
+    // Skill selection mode
     const livingEnemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
-    const livingAllies = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
+    const livingAllies  = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
 
     for (const skillId of actor.skillIds) {
       const skill = SKILLS[skillId];
-      const cd = this.manager.getSkillCooldown(actor.id, skillId);
-      const onCooldown = cd > 0;
+      const cd    = this.manager.getSkillCooldown(actor.id, skillId);
+      const onCd  = cd > 0;
 
-      const label = onCooldown
-        ? `${skill?.name ?? skillId} (${cd}t)`
-        : (skill?.name ?? skillId);
-
-      const btn = this.createButton(label, onCooldown ? "#222" : "#3a1e0e", () => {
-        if (!skill || onCooldown) return;
+      const label = onCd ? `${skill?.name ?? skillId}  (${cd}t)` : (skill?.name ?? skillId);
+      const btn   = this.makeBtn(label, onCd ? "disabled" : "normal", () => {
+        if (!skill || onCd) return;
 
         if (skill.targetType === "self") {
-          // No target selection needed — use immediately
           this.manager.executeAction(skillId, actor.id);
           this.updateMeshVisibility();
           this.renderUI();
         } else if (skill.targetType === "all_enemies" || skill.targetType === "all_allies") {
-          // AoE — no target selection needed
           this.manager.executeAction(skillId, "aoe");
           this.updateMeshVisibility();
           this.renderUI();
         } else if (
           (skill.targetType === "single_enemy" && livingEnemies.length === 1) ||
-          (skill.targetType === "single_ally" && livingAllies.length === 1)
+          (skill.targetType === "single_ally"  && livingAllies.length === 1)
         ) {
-          // Only one valid target — auto-select it
           const targetId =
             skill.targetType === "single_enemy" ? livingEnemies[0].id : livingAllies[0].id;
           this.manager.executeAction(skillId, targetId);
           this.updateMeshVisibility();
           this.renderUI();
         } else {
-          // Multiple targets — enter target selection mode
           this.pendingSkillId = skillId;
           this.renderUI();
         }
       });
 
-      if (onCooldown) {
-        btn.style.color = "#666";
-        btn.style.cursor = "not-allowed";
+      if (onCd) {
         btn.title = `On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining`;
       } else if (skill) {
         btn.title = skill.description;
@@ -329,12 +435,20 @@ export class CombatScene extends BaseScene {
     const log = this.manager.getLog();
     const div = document.createElement("div");
     div.style.cssText = `
-      font-size: 0.78rem; color: #aaa; max-height: 60px;
-      overflow-y: auto; border-top: 1px solid #333; padding-top: 4px;
+      font-size: 0.68rem;
+      color: #5a5a6a;
+      max-height: 52px;
+      overflow-y: auto;
+      border-top: 1px solid #1e1e28;
+      padding-top: 5px;
+      line-height: 1.5;
     `;
     div.innerHTML = log
       .slice(-6)
-      .map((l) => `<div>${l}</div>`)
+      .map((l, i) => {
+        const opacity = 0.45 + (i / 6) * 0.55;
+        return `<div style="opacity:${opacity.toFixed(2)}">${l}</div>`;
+      })
       .join("");
     return div;
   }
@@ -343,32 +457,36 @@ export class CombatScene extends BaseScene {
 
   private buildEndUI(state: "victory" | "defeat"): HTMLElement {
     const div = document.createElement("div");
-    div.style.cssText = "text-align:center; padding: 12px 0;";
+    div.style.cssText = "text-align:center; padding: 14px 0; display:flex; flex-direction:column; align-items:center; gap:10px;";
 
     if (state === "victory") {
-      const xpEarned = this.manager.getEnemies().length * 20;
+      const xpEarned   = this.manager.getEnemies().length * 20;
       const goldEarned = this.manager.getEnemies().length * 10;
       const isLast = this.options.encounterNum >= this.options.totalEncounters;
+
       div.innerHTML = `
-        <div style="font-size:1.4rem; color:#ffd700">⚔ Victory! ⚔</div>
-        <div style="font-size:0.9rem; color:#aaa; margin-top:4px">
-          Encounter ${this.options.encounterNum}/${this.options.totalEncounters}
+        <div style="font-family:var(--font-title,'Cinzel Decorative',Georgia,serif); font-size:1.6rem; color:#d4a840; text-shadow:0 0 20px rgba(212,168,64,0.6); letter-spacing:4px;">⚔  Victory  ⚔</div>
+        <div style="font-size:0.72rem; color:#6a6a7a; letter-spacing:1px;">Encounter ${this.options.encounterNum} of ${this.options.totalEncounters}</div>
+        <div style="font-size:0.82rem; color:#d8ceb8;">
+          <span style="color:#d4a840;">◈ +${goldEarned} Gold</span>
+          &nbsp;·&nbsp;
+          <span style="color:#4a8adf;">+${xpEarned} XP</span>
         </div>
-        <div style="font-size:0.85rem; color:#c8a96e; margin-top:4px">
-          +${xpEarned} XP &nbsp;|&nbsp; +${goldEarned} Gold
-        </div>
-        ${isLast ? '<div style="font-size:0.85rem; color:#ffd700; margin-top:4px">Dungeon cleared!</div>' : ""}
+        ${isLast ? '<div style="font-size:0.75rem; color:#d4a840; letter-spacing:2px; text-transform:uppercase;">Dungeon Cleared</div>' : ""}
       `;
 
       const btnLabel = isLast ? "Return to Town" : "Next Encounter";
-      const btn = this.createButton(btnLabel, "#1a0a00", () => {
+      const btn = this.makeBtn(btnLabel, "primary", () => {
         document.getElementById("combat-ui")?.remove();
         this.options.onVictory(this.manager.getEnemies());
       });
       div.appendChild(btn);
     } else {
-      div.innerHTML = `<div style="font-size:1.4rem; color:#c0392b">💀 Defeat 💀</div>`;
-      const btn = this.createButton("Return to Town", "#1a0a00", () => {
+      div.innerHTML = `
+        <div style="font-family:var(--font-title,'Cinzel Decorative',Georgia,serif); font-size:1.6rem; color:#8b1a1a; text-shadow:0 0 20px rgba(139,26,26,0.6); letter-spacing:4px;">💀  Defeat  💀</div>
+        <div style="font-size:0.72rem; color:#6a6a7a; letter-spacing:1px;">The party has fallen.</div>
+      `;
+      const btn = this.makeBtn("Return to Town", "danger", () => {
         document.getElementById("combat-ui")?.remove();
         this.options.onDefeat();
       });
@@ -378,18 +496,53 @@ export class CombatScene extends BaseScene {
     return div;
   }
 
-  // ─── Utility ──────────────────────────────────────────────────────────────
+  // ─── Shared helpers ───────────────────────────────────────────────────────
 
-  private createButton(label: string, bg: string, onClick: () => void): HTMLButtonElement {
+  private makeBtn(
+    label: string,
+    variant: "normal" | "primary" | "enemy" | "ally" | "disabled" | "muted" | "danger",
+    onClick: () => void,
+  ): HTMLButtonElement {
     const btn = document.createElement("button");
-    btn.style.cssText = `
-      padding: 6px 16px; background: ${bg}; color: #c8a96e;
-      border: 1px solid #c8a96e; font-family: serif; font-size: 0.95rem;
-      cursor: pointer; border-radius: 3px;
-    `;
     btn.textContent = label;
     btn.addEventListener("click", onClick);
+
+    const base = `
+      font-family: var(--font-body, 'Cinzel', Georgia, serif);
+      font-size: 0.8rem; letter-spacing: 0.5px;
+      padding: 6px 16px; border-radius: 2px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    `;
+
+    const variants: Record<string, string> = {
+      normal:   "color:#d8ceb8; background:linear-gradient(180deg,#18181f,#0e0e14); border:1px solid #4e4e5e; border-bottom-color:#8a8a9a;",
+      primary:  "color:#d4a840; background:linear-gradient(180deg,#1a1408,#0e0c04); border:1px solid #c8963a; border-bottom:2px solid #8a6a28; font-weight:600;",
+      enemy:    "color:#d07070; background:linear-gradient(180deg,#1a0808,#100404); border:1px solid #6a1e1e;",
+      ally:     "color:#70a0d0; background:linear-gradient(180deg,#081018,#040a10); border:1px solid #1e3a6e;",
+      disabled: "color:#404050; background:#0c0c12; border:1px solid #2a2a34; cursor:not-allowed;",
+      muted:    "color:#5a5a6a; background:#0e0e14; border:1px solid #2e2e3e; cursor:pointer;",
+      danger:   "color:#c05050; background:linear-gradient(180deg,#180808,#0e0404); border:1px solid #6a1818; font-weight:600;",
+    };
+
+    btn.style.cssText = base + (variants[variant] ?? variants.normal);
+
+    if (variant !== "disabled") {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.filter = "brightness(1.25)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.filter = "";
+      });
+    }
+
     return btn;
+  }
+
+  /** Very thin decorative separator. */
+  private buildDivider(): HTMLElement {
+    const d = document.createElement("div");
+    d.style.cssText = "height:1px; background:linear-gradient(90deg,transparent,#3e3e4e,transparent); margin:1px 0;";
+    return d;
   }
 
   override dispose(): void {
