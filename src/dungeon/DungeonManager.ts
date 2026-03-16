@@ -1,4 +1,4 @@
-import type { Hero, Enemy } from "../types/GameTypes";
+import type { Hero, Enemy, LevelUpEvent } from "../types/GameTypes";
 import { SAMPLE_ENEMIES } from "../data/enemies";
 
 /**
@@ -81,10 +81,12 @@ export class DungeonManager {
    * Call this after a CombatManager signals "victory".
    * `defeatedEnemies` — list of enemies from the just-finished fight,
    *   used to tally XP and gold rewards.
+   * Returns level-up events for any heroes that leveled up.
    */
-  advanceEncounter(defeatedEnemies: Enemy[]): void {
-    this.awardRewards(defeatedEnemies);
+  advanceEncounter(defeatedEnemies: Enemy[]): LevelUpEvent[] {
+    const levelUps = this.awardRewards(defeatedEnemies);
     this.currentEncounterIndex += 1;
+    return levelUps;
   }
 
   /** Current encounter number (1-based) for display. */
@@ -105,25 +107,30 @@ export class DungeonManager {
   /**
    * Award XP and gold to living heroes based on defeated enemies.
    * Called automatically by advanceEncounter().
+   * Returns level-up events for any heroes that leveled up.
    */
-  private awardRewards(defeatedEnemies: Enemy[]): void {
+  private awardRewards(defeatedEnemies: Enemy[]): LevelUpEvent[] {
     const totalXp = defeatedEnemies.length * BASE_XP_REWARD;
     const totalGold = defeatedEnemies.length * BASE_GOLD_REWARD;
 
     this.goldEarned += totalGold;
 
+    const levelUps: LevelUpEvent[] = [];
     const livingHeroes = this.heroes.filter((h) => h.stats.hp > 0);
     for (const hero of livingHeroes) {
       hero.xp += totalXp;
-      this.checkLevelUp(hero);
+      const evt = this.checkLevelUp(hero);
+      if (evt) levelUps.push(evt);
     }
+    return levelUps;
   }
 
   /**
    * Check if a hero has enough XP to level up and apply stat improvements.
    * XP threshold for level N = N * 50.
+   * Returns a LevelUpEvent if the hero leveled up, otherwise null.
    */
-  private checkLevelUp(hero: Hero): void {
+  private checkLevelUp(hero: Hero): LevelUpEvent | null {
     const threshold = hero.level * XP_PER_LEVEL_MULTIPLIER;
     if (hero.xp >= threshold) {
       hero.xp -= threshold;
@@ -134,7 +141,10 @@ export class DungeonManager {
       hero.stats.hp = Math.min(hero.stats.hp + LEVELUP_MAX_HP, hero.stats.maxHp);
       hero.stats.attack += LEVELUP_ATTACK;
       hero.stats.defense += LEVELUP_DEFENSE;
+
+      return { heroId: hero.id, heroName: hero.name, newLevel: hero.level };
     }
+    return null;
   }
 
   // ─── Factory ──────────────────────────────────────────────────────────────

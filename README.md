@@ -45,28 +45,29 @@ Core gameplay loop: Boot → Town → Combat → Return to Town.
 
 ---
 
-## 🗺 Milestone 2 — Dungeon Progression (Planned)
+## ✅ Milestone 2 — Dungeon Progression (Complete)
 
-The next milestone focuses on making the dungeon a multi-encounter run with persistent hero state, XP-based leveling, and basic rewards.
+Multi-encounter dungeon runs with persistent hero state, XP-based leveling, gold rewards, and a town upgrade shop.
 
-See [`src/dungeon/DungeonManager.ts`](src/dungeon/DungeonManager.ts) for the scaffolded implementation and detailed design notes.
+| Feature | Status |
+|---|---|
+| **Multi-encounter dungeons** (3 fights per run, heroes keep HP) | ✅ |
+| **Experience & leveling** (XP per enemy; stat bonuses on level-up) | ✅ |
+| **Gold & rewards** (enemies drop gold; tracked across the run) | ✅ |
+| **Town upgrade shop** (Blacksmith / Inn / Alchemist) | ✅ |
+| **Party stats display** (HP, level, XP, ATK, DEF in Town) | ✅ |
+| **Encounter progress indicator** in combat UI | ✅ |
+| **Persistent hero state** across encounters within a run | ✅ |
+| **Status effects / cooldowns cleared between encounters** | ✅ |
+| **Defeat recovery** (heroes restored to full HP on return to town) | ✅ |
 
-### Planned features
+### Architecture changes
 
-1. **Multi-encounter dungeons** — 3 sequential fights per dungeon run; heroes keep their HP between fights.
-2. **Experience & leveling** — defeating enemies awards XP; heroes level up and gain stat bonuses.
-3. **Gold & rewards** — enemies drop gold; party returns to town with earned gold.
-4. **Town upgrades** — spend gold on Blacksmith (attack), Alchemist (heal power), or Inn (restore HP) before the next run.
-5. **Dungeon summary screen** — after clearing all encounters, show a summary (gold earned, XP gained, hero levels).
-
-### Rough task breakdown
-
-- [ ] Wire `DungeonManager` into `Game.ts` scene transitions
-- [ ] `CombatScene` receives enemy group from `DungeonManager` instead of hard-coded `SAMPLE_ENEMIES`
-- [ ] After each victory, call `dungeon.advanceEncounter(enemies)` and start next `CombatScene` (or return to town if `isComplete()`)
-- [ ] Show level-up notification in `CombatScene` end screen
-- [ ] `TownScene` displays party stats (HP, level, XP) and upgrade shop buttons
-- [ ] Upgrade shop modifies hero stats or skill power
+- `Game.ts` owns the persistent `heroes` array and `gold`; creates a `DungeonManager` per run.
+- `CombatScene` accepts an options object (`heroes`, `enemies`, `encounterNum`, callbacks) instead of hard-coded data.
+- `TownScene` renders party stats and a 3-button upgrade shop.
+- `CombatManager` no longer deep-copies heroes so HP/XP changes persist across encounters.
+- `DungeonManager.advanceEncounter()` awards XP/gold and returns `LevelUpEvent[]`.
 
 ---
 

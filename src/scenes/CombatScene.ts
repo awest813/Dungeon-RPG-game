@@ -10,10 +10,24 @@ import {
 import type { Engine } from "@babylonjs/core";
 import { BaseScene } from "./BaseScene";
 import { CombatManager } from "../combat/CombatManager";
-import { SAMPLE_HEROES } from "../data/heroes";
-import { SAMPLE_ENEMIES } from "../data/enemies";
 import { SKILLS } from "../data/skills";
 import { isHero } from "../types/GameTypes";
+import type { Hero, Enemy } from "../types/GameTypes";
+
+/** Options passed to CombatScene by Game. */
+export interface CombatSceneOptions {
+  /** Live hero array — mutated in place during combat so HP persists. */
+  heroes: Hero[];
+  /** Enemy group for this encounter (deep-copied inside CombatManager). */
+  enemies: Enemy[];
+  /** 1-based encounter index, for progress display. */
+  encounterNum: number;
+  totalEncounters: number;
+  /** Called when all enemies are defeated; receives the defeated enemy list. */
+  onVictory: (defeatedEnemies: Enemy[]) => void;
+  /** Called when all heroes are defeated. */
+  onDefeat: () => void;
+}
 
 /**
  * CombatScene — handles turn-based combat display and input.
@@ -36,7 +50,7 @@ export class CombatScene extends BaseScene {
    */
   private pendingSkillId: string | null = null;
 
-  constructor(engine: Engine, private onReturnToTown: () => void) {
+  constructor(engine: Engine, private options: CombatSceneOptions) {
     super(engine);
   }
 
@@ -54,8 +68,8 @@ export class CombatScene extends BaseScene {
     // Ground
     MeshBuilder.CreateGround("ground", { width: 16, height: 8 }, this.scene);
 
-    // Set up combat
-    this.manager = new CombatManager(SAMPLE_HEROES, SAMPLE_ENEMIES);
+    // Set up combat — heroes are used by reference, enemies are deep-copied inside CombatManager
+    this.manager = new CombatManager(this.options.heroes, this.options.enemies);
     this.manager.start();
 
     this.spawnCombatants();
@@ -155,9 +169,13 @@ export class CombatScene extends BaseScene {
       return `<span style="color:${alive ? "#f88" : "#555"}">${e.name}: ${e.stats.hp}/${e.stats.maxHp} ${statuses}</span>`;
     });
 
+    // Encounter progress indicator
+    const enc = `<span style="color:#888; font-size:0.8rem">Encounter ${this.options.encounterNum}/${this.options.totalEncounters}</span>`;
+
     row.innerHTML = `
       <span>Heroes — ${heroSpans.join(" &nbsp;|&nbsp; ")}</span>
       <span>Enemies — ${enemySpans.join(" &nbsp;|&nbsp; ")}</span>
+      ${enc}
     `;
     return row;
   }
@@ -308,16 +326,38 @@ export class CombatScene extends BaseScene {
 
   private buildEndUI(state: "victory" | "defeat"): HTMLElement {
     const div = document.createElement("div");
-    div.style.cssText = "text-align:center; font-size:1.4rem; padding: 12px 0;";
-    div.innerHTML = state === "victory"
-      ? `<span style="color:#ffd700">⚔ Victory! ⚔</span>`
-      : `<span style="color:#c0392b">💀 Defeat 💀</span>`;
+    div.style.cssText = "text-align:center; padding: 12px 0;";
 
-    const btn = this.createButton("Return to Town", "#1a0a00", () => {
-      document.getElementById("combat-ui")?.remove();
-      this.onReturnToTown();
-    });
-    div.appendChild(btn);
+    if (state === "victory") {
+      const xpEarned = this.manager.getEnemies().length * 20;
+      const goldEarned = this.manager.getEnemies().length * 10;
+      const isLast = this.options.encounterNum >= this.options.totalEncounters;
+      div.innerHTML = `
+        <div style="font-size:1.4rem; color:#ffd700">⚔ Victory! ⚔</div>
+        <div style="font-size:0.9rem; color:#aaa; margin-top:4px">
+          Encounter ${this.options.encounterNum}/${this.options.totalEncounters}
+        </div>
+        <div style="font-size:0.85rem; color:#c8a96e; margin-top:4px">
+          +${xpEarned} XP &nbsp;|&nbsp; +${goldEarned} Gold
+        </div>
+        ${isLast ? '<div style="font-size:0.85rem; color:#ffd700; margin-top:4px">Dungeon cleared!</div>' : ""}
+      `;
+
+      const btnLabel = isLast ? "Return to Town" : "Next Encounter";
+      const btn = this.createButton(btnLabel, "#1a0a00", () => {
+        document.getElementById("combat-ui")?.remove();
+        this.options.onVictory(this.manager.getEnemies());
+      });
+      div.appendChild(btn);
+    } else {
+      div.innerHTML = `<div style="font-size:1.4rem; color:#c0392b">💀 Defeat 💀</div>`;
+      const btn = this.createButton("Return to Town", "#1a0a00", () => {
+        document.getElementById("combat-ui")?.remove();
+        this.options.onDefeat();
+      });
+      div.appendChild(btn);
+    }
+
     return div;
   }
 
