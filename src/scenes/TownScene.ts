@@ -18,6 +18,8 @@ export interface TownSceneOptions {
    * stays up-to-date after upgrades).
    */
   getGold: () => number;
+  /** Number of completed dungeon runs — shown in the UI and used to set expectations. */
+  dungeonDepth?: number;
   /**
    * Apply a shop upgrade. Returns the new gold total on success, or -1 if
    * the party cannot afford it.
@@ -92,6 +94,12 @@ export class TownScene extends BaseScene {
     title.textContent = "Town";
 
     card.appendChild(title);
+    if ((this.options.dungeonDepth ?? 0) > 0) {
+      const depthLabel = document.createElement("div");
+      depthLabel.style.cssText = "font-size:0.8rem; color:#a07040; letter-spacing:1px;";
+      depthLabel.textContent = `Dungeon Depth: ${this.options.dungeonDepth}`;
+      card.appendChild(depthLabel);
+    }
     card.appendChild(this.buildPartyPanel());
     card.appendChild(this.buildGoldRow());
     card.appendChild(this.buildShopPanel());

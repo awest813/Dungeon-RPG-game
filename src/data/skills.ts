@@ -79,4 +79,27 @@ export const SKILLS: Record<string, Skill> = {
     },
     description: "A venomous dart that deals light damage and inflicts Poison for 3 turns.",
   },
+  slam: {
+    id: "slam",
+    name: "Slam",
+    type: "damage",
+    targetType: "single_enemy",
+    power: 16,
+    description: "A crushing blow that deals heavy damage.",
+  },
+  weaken_shot: {
+    id: "weaken_shot",
+    name: "Weaken Shot",
+    type: "debuff",
+    targetType: "single_enemy",
+    power: 0,
+    appliesStatus: {
+      id: "weaken",
+      name: "Weaken",
+      duration: 2,
+      statModifier: { attack: -4, defense: -2 },
+      flags: ["weakened"],
+    },
+    description: "An enervating shot that reduces the target's attack and defense for 2 turns.",
+  },
 };
