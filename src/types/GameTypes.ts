@@ -110,3 +110,10 @@ export interface SkillResult {
 
 /** Current state of a battle */
 export type BattleState = "ongoing" | "victory" | "defeat";
+
+/** Emitted when a hero levels up after an encounter */
+export interface LevelUpEvent {
+  heroId: string;
+  heroName: string;
+  newLevel: number;
+}

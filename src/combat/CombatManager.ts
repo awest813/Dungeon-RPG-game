@@ -22,8 +22,10 @@ export class CombatManager {
   private log: string[] = [];
 
   constructor(heroes: Hero[], enemies: Enemy[]) {
-    // Deep-copy so we don't mutate the original data
-    this.heroes = heroes.map((h) => JSON.parse(JSON.stringify(h)) as Hero);
+    // Heroes are used directly (no deep-copy) so HP, XP, and levels persist
+    // across encounters in the same dungeon run.
+    this.heroes = heroes;
+    // Deep-copy enemies so each encounter starts with fresh HP.
     this.enemies = enemies.map((e) => JSON.parse(JSON.stringify(e)) as Enemy);
     this.buildTurnOrder();
   }
