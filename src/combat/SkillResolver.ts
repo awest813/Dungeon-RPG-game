@@ -33,6 +33,14 @@ export function resolveSkill(
       message = `${actor.name} uses ${skill.name} on ${target.name} for ${Math.abs(hpChange)} damage. (${target.stats.hp}/${target.stats.maxHp} HP)`;
       break;
     }
+    case "drain": {
+      hpChange = calculateDamage(actor, target, skill);
+      target.stats.hp = Math.max(0, target.stats.hp + hpChange);
+      const healAmount = Math.round(Math.abs(hpChange) * (skill.drainRatio ?? 0.5));
+      actor.stats.hp = Math.min(actor.stats.maxHp, actor.stats.hp + healAmount);
+      message = `${actor.name} uses ${skill.name} on ${target.name} for ${Math.abs(hpChange)} damage and heals for ${healAmount} HP. (${actor.stats.hp}/${actor.stats.maxHp} HP)`;
+      break;
+    }
     case "heal": {
       hpChange = skill.power;
       target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + hpChange);

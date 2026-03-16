@@ -16,4 +16,11 @@ export const JOBS: Record<string, Job> = {
     skillIds: ["fire_arrow", "oil_flask", "heal"],
     statBonus: { attack: 4, speed: 2 },
   },
+  mage: {
+    id: "mage",
+    name: "Mage",
+    description: "A backline spellcaster wielding arcane, fire, and ice magic.",
+    skillIds: ["mana_bolt", "fireball", "ice_lance", "thunderbolt", "arcane_shield", "blinding_flash"],
+    statBonus: { attack: 3, speed: 3 },
+  },
 };

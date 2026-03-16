@@ -40,4 +40,23 @@ export const SAMPLE_HEROES: Hero[] = [
     xp: 0,
     level: 1,
   },
+  {
+    id: "hero_mira",
+    name: "Mira",
+    jobId: "mage",
+    stats: {
+      maxHp: 55,
+      hp: 55,
+      attack: 13,
+      defense: 2,
+      speed: 7,
+      damageReduction: 0,
+    },
+    skillIds: ["mana_bolt", "fireball", "ice_lance", "thunderbolt", "arcane_shield", "blinding_flash"],
+    statusEffects: [],
+    lanePosition: 1,
+    skillCooldowns: {},
+    xp: 0,
+    level: 1,
+  },
 ];

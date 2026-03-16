@@ -1,6 +1,6 @@
 import type { Hero, Enemy, Combatant, BattleState, SkillResult } from "../types/GameTypes";
 import { isHero } from "../types/GameTypes";
-import { tickStatuses } from "./StatusSystem";
+import { tickStatuses, hasStatusFlag, removeStatus } from "./StatusSystem";
 import { resolveSkill } from "./SkillResolver";
 import { SKILLS } from "../data/skills";
 
@@ -79,9 +79,28 @@ export class CombatManager {
   // ─── Turn execution ────────────────────────────────────────────────────────
 
   /**
+   * If the current actor is stunned, consume their turn and return a result.
+   * Returns null if the actor is not stunned (normal flow continues).
+   * Call this before showing the hero UI or executing an enemy turn.
+   */
+  processStunIfNeeded(): { result: SkillResult; state: BattleState } | null {
+    const actor = this.getCurrentActor();
+    if (!actor || !hasStatusFlag(actor, "stunned")) return null;
+
+    removeStatus(actor, "stun");
+    const msg = `${actor.name} is stunned and loses their turn!`;
+    this.log.push(msg);
+    this.advanceTurn();
+    return {
+      result: { actorId: actor.id, targetId: "", skillId: "stun", hpChange: 0, message: msg },
+      state: this.getBattleState(),
+    };
+  }
+
+  /**
    * Execute an action for the current actor.
    * `skillId` — which skill to use.
-   * `targetId` — id of the target combatant.
+   * `targetId` — id of the target combatant. Pass `"aoe"` for area-of-effect skills.
    * Returns the SkillResult, advances the turn, and returns battle state.
    */
   executeAction(skillId: string, targetId: string): { result: SkillResult; state: BattleState } {
@@ -105,6 +124,68 @@ export class CombatManager {
       }
     }
 
+    const skill = SKILLS[skillId];
+
+    // ── AoE targeting ────────────────────────────────────────────────────────
+    if (skill?.targetType === "all_enemies") {
+      const targets = isHero(actor)
+        ? this.enemies.filter((e) => e.stats.hp > 0)
+        : this.heroes.filter((h) => h.stats.hp > 0);
+
+      let totalHpChange = 0;
+      const messages: string[] = [];
+      let lastStatus: SkillResult["statusApplied"];
+
+      for (const t of targets) {
+        const r = resolveSkill(actor, t, skillId);
+        totalHpChange += r.hpChange;
+        messages.push(r.message);
+        if (r.statusApplied) lastStatus = r.statusApplied;
+      }
+
+      const combinedMsg = messages.join(" ");
+      this.log.push(combinedMsg);
+
+      if (isHero(actor) && skill?.cooldown) {
+        actor.skillCooldowns[skillId] = skill.cooldown;
+      }
+
+      this.advanceTurn();
+      return {
+        result: { actorId: actor.id, targetId: "all_enemies", skillId, hpChange: totalHpChange, statusApplied: lastStatus, message: combinedMsg },
+        state: this.getBattleState(),
+      };
+    }
+
+    if (skill?.targetType === "all_allies") {
+      const targets = isHero(actor)
+        ? this.heroes.filter((h) => h.stats.hp > 0)
+        : this.enemies.filter((e) => e.stats.hp > 0);
+
+      let totalHpChange = 0;
+      const messages: string[] = [];
+
+      for (const t of targets) {
+        const r = resolveSkill(actor, t, skillId);
+        totalHpChange += r.hpChange;
+        messages.push(r.message);
+      }
+
+      const combinedMsg = messages.join(" ");
+      this.log.push(combinedMsg);
+
+      if (isHero(actor) && skill?.cooldown) {
+        actor.skillCooldowns[skillId] = skill.cooldown;
+      }
+
+      this.advanceTurn();
+      return {
+        result: { actorId: actor.id, targetId: "all_allies", skillId, hpChange: totalHpChange, message: combinedMsg },
+        state: this.getBattleState(),
+      };
+    }
+
+    // ── Single-target ────────────────────────────────────────────────────────
     const target = this.findCombatant(targetId);
     if (!target) {
       return {
@@ -137,6 +218,10 @@ export class CombatManager {
     const actor = this.getCurrentActor();
     if (!actor || isHero(actor)) return null;
 
+    // Check if the enemy is stunned — if so, skip their turn
+    const stunSkip = this.processStunIfNeeded();
+    if (stunSkip) return stunSkip;
+
     const livingHeroes = this.heroes.filter((h) => this.isAlive(h));
     if (livingHeroes.length === 0) {
       return { result: { actorId: actor.id, targetId: "", skillId: "", hpChange: 0, message: "No heroes to target." }, state: "defeat" };
@@ -145,8 +230,14 @@ export class CombatManager {
     const target = livingHeroes[Math.floor(Math.random() * livingHeroes.length)];
     const skillId = actor.skillIds[Math.floor(Math.random() * actor.skillIds.length)];
 
-    // If the skill targets self (like guard), resolve on actor instead
     const skill = SKILLS[skillId];
+
+    // AoE skills — pass "aoe" sentinel; executeAction handles the targeting
+    if (skill?.targetType === "all_enemies" || skill?.targetType === "all_allies") {
+      return this.executeAction(skillId, "aoe");
+    }
+
+    // If the skill targets self (like guard), resolve on actor instead
     const resolvedTarget = skill?.targetType === "self" ? actor : target;
 
     return this.executeAction(skillId, resolvedTarget.id);

@@ -13,7 +13,7 @@ export interface Stats {
 }
 
 /** A skill's type determines how the resolver handles it */
-export type SkillType = "damage" | "heal" | "buff" | "debuff";
+export type SkillType = "damage" | "heal" | "buff" | "debuff" | "drain";
 
 /** Targeting rules for a skill */
 export type TargetType = "single_enemy" | "single_ally" | "self" | "all_enemies" | "all_allies";
@@ -44,6 +44,11 @@ export interface Skill {
   /** Optional cooldown tracking (turns) */
   cooldown?: number;
   currentCooldown?: number;
+  /**
+   * For "drain" skills: fraction of damage dealt that is returned as healing
+   * to the actor (default 0.5 = 50%).
+   */
+  drainRatio?: number;
   description: string;
 }
 
