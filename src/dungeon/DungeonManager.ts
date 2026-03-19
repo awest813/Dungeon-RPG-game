@@ -182,8 +182,8 @@ export class DungeonManager {
 
     const tier0 = ["enemy_giant_rat", "enemy_goblin"];
     const tier1 = ["enemy_zombie", "enemy_giant_spider"];
-    const tier2 = ["enemy_orc", "enemy_skeleton_mage", "enemy_dark_archer", "enemy_harpy", "enemy_wight"];
-    const tier3 = ["enemy_troll", "enemy_minotaur", "enemy_basilisk"];
+    const tier2 = ["enemy_orc", "enemy_skeleton_mage", "enemy_dark_archer", "enemy_harpy", "enemy_wight", "enemy_cultist"];
+    const tier3 = ["enemy_troll", "enemy_minotaur", "enemy_basilisk", "enemy_lich"];
     const tier4 = ["enemy_fire_drake"];
 
     let enc1: Enemy[];

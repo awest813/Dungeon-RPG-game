@@ -61,6 +61,32 @@ export interface Job {
   skillIds: string[];
   /** Base stat bonuses granted by this job */
   statBonus: Partial<Stats>;
+  /**
+   * Passive critical hit chance (0–1).
+   * On a successful crit roll, damage is multiplied by 1.5.
+   */
+  critChance?: number;
+}
+
+/** A consumable item that can be used in combat or managed in town */
+export interface Item {
+  id: string;
+  name: string;
+  /** Primary effect category */
+  type: "heal" | "cleanse" | "buff" | "damage";
+  /** Who the item targets */
+  targetType: TargetType;
+  /** HP restored (heal type) or damage dealt (damage type) */
+  power?: number;
+  /** Status effect IDs to remove (cleanse type) */
+  removesStatusIds?: string[];
+  /** Status effect to apply to the target */
+  appliesStatus?: Omit<StatusEffect, "id"> & { id: string };
+  /** If true, resets all skill cooldowns for the user */
+  resetsCooldowns?: boolean;
+  /** Gold cost to purchase one unit */
+  cost: number;
+  description: string;
 }
 
 /** A player-controlled hero */
@@ -103,13 +129,15 @@ export function isHero(c: Combatant): c is Hero {
   return "jobId" in c;
 }
 
-/** Result object returned after resolving a skill */
+/** Result object returned after resolving a skill or item use */
 export interface SkillResult {
   actorId: string;
   targetId: string;
   skillId: string;
   hpChange: number;           // negative = damage, positive = heal
   statusApplied?: StatusEffect;
+  /** Whether the attack landed as a critical hit */
+  isCrit?: boolean;
   message: string;
 }
 
