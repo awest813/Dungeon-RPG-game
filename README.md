@@ -1,28 +1,30 @@
 # Dungeon RPG
 
-A browser-based, turn-based dungeon RPG built with [Babylon.js](https://www.babylonjs.com/) and TypeScript.
+A browser-based, turn-based dungeon RPG built with [Babylon.js](https://www.babylonjs.com/) and TypeScript, styled with a dark Elder Scrolls–inspired aesthetic (Cinzel fonts, amber torchlight, iron-grey panels).
 
 ## 🎮 About
 
-Heroes explore a dungeon, fighting enemy encounters in turn-based combat. The game uses a speed-based turn order, status effects, skill combos, and a party system.
+Lead a party of four heroes — Warrior, Ranger, Mage, and Rogue — through procedurally generated dungeon encounters. Combat is turn-based with speed-based initiative, skill cooldowns, status effects, AoE spells, consumable items, and persistent XP/gold across runs.
 
 ## 🧭 Prerequisites
 
-* Node 16+
+* Node 18+
 * npm
 
-## 🤖 Getting started
+## 🚀 Getting Started
 
 ```sh
 npm install
-npm run dev       # start dev server
-npm run build     # production build
-npm run typecheck # TypeScript type-check
+npm run dev       # start Vite dev server (http://localhost:5173)
+npm run build     # production build → dist/
+npm run typecheck # TypeScript type-check (no emit)
 ```
 
 ---
 
-## ✅ Milestone 1 — Turn-Based Combat Foundation (Complete)
+## 🗺️ Project Roadmap
+
+### ✅ Milestone 1 — Turn-Based Combat Foundation
 
 Core gameplay loop: Boot → Town → Combat → Return to Town.
 
@@ -30,13 +32,13 @@ Core gameplay loop: Boot → Town → Combat → Return to Town.
 |---|---|
 | Boot splash screen | ✅ |
 | Town hub scene | ✅ |
-| Turn-based combat (speed-based order) | ✅ |
+| Turn-based combat (speed-based initiative order) | ✅ |
 | Skill system (damage / heal / buff / debuff) | ✅ |
 | Status effects (Burn, Poison, Guard, Oiled, Weaken) | ✅ |
 | Oil + Burn combo interaction | ✅ |
 | Status effect display in combat UI | ✅ |
-| **Skill cooldown enforcement** | ✅ |
-| **Interactive target selection** | ✅ |
+| Skill cooldown enforcement | ✅ |
+| Interactive target selection | ✅ |
 | Enemy AI (random skill, random target) | ✅ |
 | Party: Aldric (Warrior) + Lyra (Ranger) | ✅ |
 | Enemies: Goblin, Orc Brute, Skeleton Mage | ✅ |
@@ -45,152 +47,177 @@ Core gameplay loop: Boot → Town → Combat → Return to Town.
 
 ---
 
-## ✅ Milestone 2 — Dungeon Progression (Complete)
+### ✅ Milestone 2 — Dungeon Progression
 
-Multi-encounter dungeon runs with persistent hero state, XP-based leveling, gold rewards, and a town upgrade shop.
+Multi-encounter dungeon runs with persistent hero state, XP leveling, gold rewards, and a town upgrade shop.
 
 | Feature | Status |
 |---|---|
-| **Multi-encounter dungeons** (3 fights per run, heroes keep HP) | ✅ |
-| **Experience & leveling** (XP per enemy; stat bonuses on level-up) | ✅ |
-| **Gold & rewards** (enemies drop gold; tracked across the run) | ✅ |
-| **Town upgrade shop** (Blacksmith / Inn / Alchemist) | ✅ |
-| **Party stats display** (HP, level, XP, ATK, DEF in Town) | ✅ |
-| **Encounter progress indicator** in combat UI | ✅ |
-| **Persistent hero state** across encounters within a run | ✅ |
-| **Status effects / cooldowns cleared between encounters** | ✅ |
-| **Defeat recovery** (heroes restored to full HP on return to town) | ✅ |
+| Multi-encounter dungeons (3 fights per run, heroes keep HP) | ✅ |
+| Experience & leveling (XP per enemy; stat bonuses on level-up) | ✅ |
+| Gold rewards (enemies drop gold; tracked across the run) | ✅ |
+| Town upgrade shop (Blacksmith / Inn / Alchemist) | ✅ |
+| Party stats display (HP, level, XP, ATK, DEF in Town) | ✅ |
+| Encounter progress indicator in combat UI | ✅ |
+| Persistent hero state across encounters within a run | ✅ |
+| Status effects / cooldowns cleared between encounters | ✅ |
+| Defeat recovery (heroes restored to full HP on return to town) | ✅ |
 
-### Architecture changes
-
-- `Game.ts` owns the persistent `heroes` array and `gold`; creates a `DungeonManager` per run.
-- `CombatScene` accepts an options object (`heroes`, `enemies`, `encounterNum`, callbacks) instead of hard-coded data.
-- `TownScene` renders party stats and a 3-button upgrade shop.
-- `CombatManager` no longer deep-copies heroes so HP/XP changes persist across encounters.
-- `DungeonManager.advanceEncounter()` awards XP/gold and returns `LevelUpEvent[]`.
+**Key changes:** `Game.ts` owns `heroes[]` and `gold`; `DungeonManager` created per run; `CombatManager` no longer deep-copies heroes so HP/XP persist; `DungeonManager.advanceEncounter()` returns `LevelUpEvent[]`.
 
 ---
 
-## ✅ Milestone 3 — Procedural Dungeon Generation & Expanded Content (Complete)
+### ✅ Milestone 3 — Procedural Generation & Content Expansion
 
-Procedurally generated encounters that scale with each completed run, plus two new enemies and two new skills.
+Procedurally generated encounters that scale with each completed run, plus two new enemies and skills.
 
 | Feature | Status |
 |---|---|
-| **Procedural encounter generation** (tiered enemy pool, random composition) | ✅ |
-| **Dungeon depth scaling** (enemy HP, ATK, DEF increase per completed run) | ✅ |
-| **New enemy: Troll Brute** (high HP/ATK, uses Slam + Guard) | ✅ |
-| **New enemy: Dark Archer** (high speed, uses Weaken Shot + Slash) | ✅ |
-| **New skill: Slam** (heavy single-target damage, power 16) | ✅ |
-| **New skill: Weaken Shot** (applies Weaken — −4 ATK / −2 DEF for 2 turns) | ✅ |
-| **Unique enemy IDs** (two enemies of the same type can be targeted individually) | ✅ |
-| **Dungeon depth display** in Town UI | ✅ |
+| Procedural encounter generation (tiered enemy pool, random composition) | ✅ |
+| Dungeon depth scaling (enemy HP / ATK / DEF increase per run) | ✅ |
+| New enemy: Troll Brute (high HP/ATK, Slam + Guard) | ✅ |
+| New enemy: Dark Archer (high SPD, Weaken Shot + Slash) | ✅ |
+| New skill: Slam (heavy single-target, power 16) | ✅ |
+| New skill: Weaken Shot (applies Weaken — −4 ATK / −2 DEF for 2 turns) | ✅ |
+| Unique enemy IDs so two enemies of the same type can be targeted individually | ✅ |
+| Dungeon depth display in Town UI | ✅ |
 
-### Architecture changes
-
-- `DungeonManager` constructor now accepts a `depth: number` parameter (default 0).
-- `buildProceduralEncounters(depth)` replaces the hardcoded `buildDefaultEncounters()`: enemies are drawn from three difficulty tiers and stat-scaled by depth.
-- `Game.ts` tracks `dungeonDepth` (incremented on each completed run) and passes it to `DungeonManager` and `TownScene`.
-- Cloned enemies receive unique sequential IDs so the player can target each one independently.
+**Key changes:** `DungeonManager` accepts `depth` param; `buildProceduralEncounters(depth)` replaces hardcoded encounters; `Game.ts` tracks and passes `dungeonDepth`.
 
 ---
 
-## ✅ Milestone 4 — New Enemies, Spells, Status Effects & Mage Class (Complete)
+### ✅ Milestone 4 — Enemies, Spells, Status Effects & Mage Class
 
-OSR-inspired enemy roster expansion, a full Mage hero class with spells, new status effects, and AoE / drain skill mechanics.
+OSR-inspired enemy roster expansion, Mage hero class, new status effects, and AoE / drain mechanics.
 
 | Feature | Status |
 |---|---|
-| **8 new enemies** from OSR bestiary: Giant Rat, Zombie, Giant Spider, Harpy, Wight, Minotaur, Basilisk, Fire Drake | ✅ |
-| **New status effects**: Bleed (tick damage), Stun (lose turn), Freeze (−speed), Blind (−attack), Fear (−def/−speed), Regenerate (+HP per round) | ✅ |
-| **Drain skill type** — Life Drain deals damage and heals the actor for 50% of damage dealt | ✅ |
-| **AoE skills** — Fire Breath & Fireball hit all enemies; correctly handled in CombatManager and UI | ✅ |
-| **Stun skip-turn mechanic** — stunned heroes/enemies automatically lose their turn | ✅ |
-| **Regen (negative tick)** — Regenerate heals HP each round in StatusSystem | ✅ |
-| **Mage job** with 6 spells: Mana Bolt, Fireball, Ice Lance, Thunderbolt, Arcane Shield, Blinding Flash | ✅ |
-| **Mira (Mage)** added as third hero — backline spellcaster | ✅ |
-| **4-tier encounter system** in DungeonManager: intro / easy / mid / hard, with boss Fire Drake at depth ≥ 3 | ✅ |
-| **13 new skills** added to skills registry | ✅ |
+| 8 new enemies: Giant Rat, Zombie, Giant Spider, Harpy, Wight, Minotaur, Basilisk, Fire Drake | ✅ |
+| 6 new status effects: Bleed (tick dmg), Stun (skip turn), Freeze (−SPD), Blind (−ATK), Fear (−DEF/−SPD), Regen (+HP/round) | ✅ |
+| Drain skill type — Life Drain deals damage and heals actor for 50% | ✅ |
+| AoE skills — Fire Breath & Fireball hit all enemies; UI auto-fires without target prompt | ✅ |
+| Stun skip-turn mechanic — stunned actors automatically lose their turn | ✅ |
+| Mage job with 6 spells: Mana Bolt, Fireball, Ice Lance, Thunderbolt, Arcane Shield, Blinding Flash | ✅ |
+| Mira (Mage) — third hero, backline spellcaster | ✅ |
+| 4-tier encounter system: intro / easy / mid / hard; boss Fire Drake at depth ≥ 3 | ✅ |
 
-### Architecture changes
+**Key changes:** `GameTypes.ts` gains `"drain"` skill type; `StatusSystem.ts` handles negative tick (healing); `CombatManager.ts` routes AoE + stun logic; `CombatScene.ts` adds stun skip button.
 
-- `GameTypes.ts`: added `"drain"` to `SkillType`; added `drainRatio?: number` to `Skill`.
-- `StatusSystem.ts`: 6 new status templates; `tickStatuses` now handles negative `tickDamage` as healing.
-- `SkillResolver.ts`: handles `"drain"` skill type (damage + self-heal).
-- `CombatManager.ts`: `executeAction` handles `all_enemies` / `all_allies` AoE; `processStunIfNeeded()` skips stunned actors; `executeEnemyTurn` calls stun check and routes AoE skills.
-- `CombatScene.ts`: hero stun display + skip button; AoE skills auto-fire without target selection prompt.
-- `DungeonManager.ts`: 4 enemy tiers; depth ≥ 3 unlocks boss-tier Fire Drake encounters.
+---
 
+### ✅ Milestone 5 — Item Economy, Inventory & Rogue Class
 
+Consumable item shop, enemy loot drops, in-combat item use, and the Rogue hero class.
+
+| Feature | Status |
+|---|---|
+| Party inventory — `partyItems` shared across all encounters and runs | ✅ |
+| Enemy loot drops — consumables dropped after every encounter (depth-gated) | ✅ |
+| Apothecary shop in Town — buy all 6 consumables with gold | ✅ |
+| Inventory panel in Town — shows each held item with quantity | ✅ |
+| Items usable in combat — ⚗ Items button + full target-selection UI | ✅ |
+| Rogue job — high SPD (+4 base), 35% crit chance | ✅ |
+| Silvar (Rogue) — 4th hero, fastest in party, back-line assassin | ✅ |
+| 4 new Rogue skills: Backstab (heavy dmg + Bleed), Shadow Step (dmg + Stun), Garrote (dmg + long Bleed), Vanish (60% DR) | ✅ |
+| Dynamic hero 3D positioning — combat scene adapts to any party size | ✅ |
+
+**Key changes:** `DungeonManager.advanceEncounter()` returns `EncounterRewards { levelUps, droppedItems }`; `Game.ts` gains `partyItems` + `buyItem()` handler; `TownScene` adds scrollable Inventory + Apothecary panels; `CombatScene` calculates hero mesh positions dynamically.
+
+---
+
+### 🔜 Milestone 6 — Equipment & Gear System *(planned)*
+
+Give heroes permanent stat bonuses through equippable weapons and armour found or bought during runs.
+
+| Feature | Status |
+|---|---|
+| Equipment slot system (weapon, armour, accessory per hero) | 🔲 |
+| Weapon definitions with ATK bonuses and special effects | 🔲 |
+| Armour definitions with DEF bonuses | 🔲 |
+| Equipment drops from bosses and mid-tier enemies | 🔲 |
+| Blacksmith shop upgrade — sell / buy / compare gear | 🔲 |
+| Equipment display in Town party stats panel | 🔲 |
+| Equipment persists across dungeon runs | 🔲 |
+
+---
+
+### 🔜 Milestone 7 — Dungeon Map & Room Variety *(planned)*
+
+Replace the linear 3-encounter structure with a branching dungeon map containing different room types.
+
+| Feature | Status |
+|---|---|
+| Branching room layout (2–3 paths per floor) | 🔲 |
+| Room types: combat, treasure, trap, rest, boss | 🔲 |
+| Minimap display in combat / dungeon UI | 🔲 |
+| Trap rooms deal party damage; rest rooms restore partial HP | 🔲 |
+| Treasure rooms grant gold + random item without combat | 🔲 |
+| Boss room guaranteed on final floor | 🔲 |
+| Floor completion unlocks new depth tier in subsequent runs | 🔲 |
+
+---
+
+### 🔜 Milestone 8 — Hero Progression & Skill Trees *(planned)*
+
+Replace flat leveling bonuses with a meaningful per-hero progression system.
+
+| Feature | Status |
+|---|---|
+| Skill trees per job (3 branches, ~5 nodes each) | 🔲 |
+| Skill points awarded on level-up | 🔲 |
+| Unlockable active skills (Warrior: Whirlwind / Shield Bash / Rallying Cry) | 🔲 |
+| Unlockable active skills (Ranger: Twin Shot / Smoke Screen / Eagle Eye) | 🔲 |
+| Unlockable active skills (Mage: Chain Lightning / Frost Nova / Time Warp) | 🔲 |
+| Unlockable active skills (Rogue: Shadowmeld / Throat Cut / Marked for Death) | 🔲 |
+| Passive node bonuses (crit %, max HP, cooldown reduction) | 🔲 |
+| Skill tree UI panel accessible from Town | 🔲 |
+
+---
+
+### 🔜 Milestone 9 — Save / Load & Meta Progression *(planned)*
+
+Persist runs to localStorage and add cross-run unlocks to reward repeated play.
+
+| Feature | Status |
+|---|---|
+| Auto-save after every encounter and on return to town | 🔲 |
+| Load game from main menu | 🔲 |
+| New Game + option after completing depth ≥ 5 | 🔲 |
+| Meta currency (Soul Shards) earned by defeating bosses | 🔲 |
+| Persistent upgrades purchasable with Soul Shards between runs | 🔲 |
+| Bestiary — unlocks enemy lore entries as new enemy types are defeated | 🔲 |
+| Achievements system (first boss kill, max depth, full party wipe, etc.) | 🔲 |
+
+---
+
+## 🏗️ Architecture
 
 ```
 src/
-  main.ts              Entry point
-  Game.ts              Engine + scene manager
+  main.ts                 Entry point — mounts Babylon engine
+  Game.ts                 App root: scene manager, hero/gold/item state
   scenes/
-    BaseScene.ts       Abstract base class
-    BootScene.ts       Splash screen
-    TownScene.ts       Hub between dungeon runs
-    CombatScene.ts     Turn-based battle
+    BaseScene.ts          Abstract base scene
+    BootScene.ts          Splash / loading screen
+    TownScene.ts          Town hub (shop, inventory, party stats)
+    CombatScene.ts        Turn-based battle scene
   combat/
-    CombatManager.ts   Turn order, action dispatch, cooldown tracking
-    SkillResolver.ts   Damage / heal / status calculation
-    StatusSystem.ts    Status effect application and tick
+    CombatManager.ts      Turn order, action dispatch, AoE, stun logic
+    SkillResolver.ts      Damage / heal / drain / status calculations
+    StatusSystem.ts       Status effect application and per-round ticks
   dungeon/
----
-
-## ✅ Milestone 5 — Item Shop, Party Inventory & Rogue Class (Complete)
-
-A fully wired consumable item economy, enemy loot drops, and a new Rogue hero class.
-
-| Feature | Status |
-|---|---|
-| **Party inventory** — `partyItems` shared across all encounters and runs | ✅ |
-| **Enemy loot drops** — consumables dropped after every encounter (depth-gated) | ✅ |
-| **Apothecary shop** in Town — buy all 6 consumables with gold | ✅ |
-| **Inventory panel** in Town — see exactly what the party is carrying | ✅ |
-| **Items usable in combat** — ⚗ Items button + full target-selection UI (pre-built M4) | ✅ |
-| **New Rogue job** — high speed (SPD +4), high crit (35%), skills: Backstab / Shadow Step / Garrote / Vanish | ✅ |
-| **Silvar (Rogue)** — 4th hero, fastest in the party, back-line assassin | ✅ |
-| **4 new Rogue skills** — Backstab (heavy dmg+Bleed), Shadow Step (dmg+Stun), Garrote (dmg+long Bleed), Vanish (60% DR) | ✅ |
-| **Dynamic hero 3D positioning** — combat scene adapts to any party size | ✅ |
-
-### Architecture changes
-
-- `DungeonManager.advanceEncounter()` now returns `EncounterRewards { levelUps, droppedItems }` instead of `LevelUpEvent[]`.
-- `DungeonManager.generateDrops()` rolls per-encounter item drops; drop table expands with dungeon depth.
-- `Game.ts`: added `private partyItems` state; `buyItem()` handler; passes `partyItems` to both `TownScene` and `CombatScene`; merges loot drops on encounter victory.
-- `TownScene`: two new panels — **Inventory** (chips showing held items + quantity) and **Apothecary** (2-column buy grid for all 6 consumables). Card is now scrollable (`max-height: 92vh`).
-- `CombatScene`: hero mesh start position is now calculated dynamically so a 4-hero party never overlaps enemies.
-
----
-
-```
-src/
-  main.ts              Entry point
-  Game.ts              Engine + scene manager
-  scenes/
-    BaseScene.ts       Abstract base class
-    BootScene.ts       Splash screen
-    TownScene.ts       Hub between dungeon runs
-    CombatScene.ts     Turn-based battle
-  combat/
-    CombatManager.ts   Turn order, action dispatch, cooldown tracking
-    SkillResolver.ts   Damage / heal / status calculation
-    StatusSystem.ts    Status effect application and tick
-  dungeon/
-    DungeonManager.ts  Multi-encounter dungeon runs
+    DungeonManager.ts     Multi-encounter runs, procedural generation, loot drops
   data/
-    skills.ts          Skill definitions (41 skills total, incl. 4 new Rogue skills)
-    jobs.ts            Job/class definitions (Warrior, Ranger, Mage, Rogue)
-    heroes.ts          Starting hero party (Aldric, Lyra, Mira, Silvar)
-    enemies.ts         Enemy definitions (15 enemies across 4 tiers)
-    items.ts           Consumable items (6 items)
+    skills.ts             Skill registry (30 skills across all jobs)
+    jobs.ts               Job definitions: Warrior, Ranger, Mage, Rogue
+    heroes.ts             Starting heroes: Aldric, Lyra, Mira, Silvar
+    enemies.ts            15 enemies across 4 difficulty tiers
+    items.ts              6 consumable items
   types/
-    GameTypes.ts       Core TypeScript interfaces
+    GameTypes.ts          Core TypeScript interfaces and enums
 ```
 
-## 🦉 License
+## 📜 License
 
 MIT
 
