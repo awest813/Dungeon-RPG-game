@@ -140,6 +140,21 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     statusEffects: [],
     lanePosition: 0,
   },
+  {
+    id: "enemy_cultist",
+    name: "Cultist",
+    stats: {
+      maxHp: 52,
+      hp: 52,
+      attack: 11,
+      defense: 2,
+      speed: 6,
+      damageReduction: 0,
+    },
+    skillIds: ["dark_pact", "slash", "poison_dart"],
+    statusEffects: [],
+    lanePosition: 1,
+  },
   // ─── Tier 3: Hard encounters ──────────────────────────────────────────────
   {
     id: "enemy_troll",
@@ -185,6 +200,21 @@ export const SAMPLE_ENEMIES: Enemy[] = [
     skillIds: ["claw_rake", "paralyze_gaze", "bite"],
     statusEffects: [],
     lanePosition: 0,
+  },
+  {
+    id: "enemy_lich",
+    name: "Lich",
+    stats: {
+      maxHp: 80,
+      hp: 80,
+      attack: 14,
+      defense: 6,
+      speed: 6,
+      damageReduction: 0,
+    },
+    skillIds: ["soul_drain", "dark_pact", "paralyze_gaze"],
+    statusEffects: [],
+    lanePosition: 1,
   },
   // ─── Tier 4: Boss encounters ──────────────────────────────────────────────
   {

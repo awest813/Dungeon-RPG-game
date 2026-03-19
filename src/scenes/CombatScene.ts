@@ -12,6 +12,7 @@ import type { Engine } from "@babylonjs/core";
 import { BaseScene } from "./BaseScene";
 import { CombatManager } from "../combat/CombatManager";
 import { SKILLS } from "../data/skills";
+import { ITEMS } from "../data/items";
 import { isHero } from "../types/GameTypes";
 import type { Hero, Enemy } from "../types/GameTypes";
 
@@ -24,6 +25,8 @@ export interface CombatSceneOptions {
   /** 1-based encounter index, for progress display. */
   encounterNum: number;
   totalEncounters: number;
+  /** Shared party consumable inventory — mutated in place when items are used. */
+  partyItems: Record<string, number>;
   /** Called when all enemies are defeated; receives the defeated enemy list. */
   onVictory: (defeatedEnemies: Enemy[]) => void;
   /** Called when all heroes are defeated. */
@@ -41,6 +44,8 @@ export interface CombatSceneOptions {
  * Player interaction flow:
  *   1. Click a skill button  →  if the skill needs a target, enter "target selection" mode
  *   2. Click a target button →  execute the skill and re-render the UI
+ *   3. Click "⚗ Items"       →  enter item-selection mode
+ *   4. Click an item button  →  if single_ally, enter target-selection mode; else fire immediately
  */
 export class CombatScene extends BaseScene {
   private manager!: CombatManager;
@@ -51,6 +56,14 @@ export class CombatScene extends BaseScene {
    * null = no pending skill (normal skill-selection mode).
    */
   private pendingSkillId: string | null = null;
+
+  /**
+   * Item interaction state:
+   *   null              → normal mode
+   *   "__select__"      → showing item list
+   *   "<itemId>"        → item chosen, showing target buttons (for single_ally items)
+   */
+  private pendingItemId: string | null = null;
 
   constructor(engine: Engine, private options: CombatSceneOptions) {
     super(engine);
@@ -115,7 +128,7 @@ export class CombatScene extends BaseScene {
     }
 
     // Set up combat
-    this.manager = new CombatManager(this.options.heroes, this.options.enemies);
+    this.manager = new CombatManager(this.options.heroes, this.options.enemies, this.options.partyItems);
     this.manager.start();
 
     this.spawnCombatants();
@@ -305,16 +318,38 @@ export class CombatScene extends BaseScene {
   private buildActorRow(): HTMLElement {
     const actor = this.manager.getCurrentActor();
     const div = document.createElement("div");
-    div.style.cssText = "font-size:0.8rem; color:#8a8a9a; letter-spacing:0.5px;";
+    div.style.cssText = "display:flex; flex-direction:column; gap:3px;";
 
-    if (this.pendingSkillId) {
+    // Current actor line
+    const actorLine = document.createElement("div");
+    actorLine.style.cssText = "font-size:0.8rem; color:#8a8a9a; letter-spacing:0.5px;";
+
+    if (this.pendingItemId && this.pendingItemId !== "__select__") {
+      const item = ITEMS[this.pendingItemId];
+      actorLine.innerHTML = `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor?.name ?? "?"}</span> — choose a target for <span style="color:#c8963a;">⚗ ${item?.name ?? this.pendingItemId}</span>`;
+    } else if (this.pendingSkillId) {
       const skill = SKILLS[this.pendingSkillId];
-      div.innerHTML = `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor?.name ?? "?"}</span> — choose a target for <span style="color:#d4a840;">${skill?.name ?? this.pendingSkillId}</span>`;
+      actorLine.innerHTML = `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor?.name ?? "?"}</span> — choose a target for <span style="color:#d4a840;">${skill?.name ?? this.pendingSkillId}</span>`;
     } else {
-      div.innerHTML = actor
+      actorLine.innerHTML = actor
         ? `<span style="color:#d4a840;">▶</span> <span style="color:#d8ceb8;">${actor.name}</span> — Round <span style="color:#d8ceb8;">${this.manager.getRound()}</span>`
         : `<span style="color:#6a6a7a;">Waiting…</span>`;
     }
+    div.appendChild(actorLine);
+
+    // Turn order preview — next up to 3 upcoming actors
+    const upcoming = this.manager.getUpcomingActors(3);
+    if (upcoming.length > 0) {
+      const preview = document.createElement("div");
+      preview.style.cssText = "font-size:0.62rem; color:#4a4a5a; letter-spacing:0.5px;";
+      const parts = upcoming.map((c) => {
+        const color = isHero(c) ? "#5a80a8" : "#7a3838";
+        return `<span style="color:${color};">${c.name}</span>`;
+      });
+      preview.innerHTML = `<span style="color:#3a3a4a;">Next:</span> ${parts.join(" <span style='color:#3a3a4a;'>→</span> ")}`;
+      div.appendChild(preview);
+    }
+
     return div;
   }
 
@@ -350,7 +385,77 @@ export class CombatScene extends BaseScene {
       return row;
     }
 
-    // Target selection mode
+    // ── Item target selection mode ────────────────────────────────────────
+    if (this.pendingItemId && this.pendingItemId !== "__select__") {
+      const item = ITEMS[this.pendingItemId];
+      // single_ally items: show all living heroes as targets
+      this.manager.getHeroes().filter((h) => h.stats.hp > 0).forEach((h) => {
+        row.appendChild(this.makeBtn(h.name, "ally", () => {
+          this.manager.useItem(this.pendingItemId!, h.id);
+          this.pendingItemId = null;
+          this.updateMeshVisibility();
+          this.renderUI();
+        }));
+      });
+      row.appendChild(this.makeBtn("✕  Cancel", "muted", () => {
+        this.pendingItemId = null;
+        this.renderUI();
+      }));
+      if (item) {
+        const hint = document.createElement("span");
+        hint.style.cssText = "font-size:0.65rem; color:#6a6a7a; margin-left:4px;";
+        hint.textContent = item.description;
+        row.appendChild(hint);
+      }
+      return row;
+    }
+
+    // ── Item selection mode ───────────────────────────────────────────────
+    if (this.pendingItemId === "__select__") {
+      const partyItems = this.options.partyItems;
+      const hasItems = Object.keys(partyItems).length > 0;
+
+      if (!hasItems) {
+        const empty = document.createElement("span");
+        empty.style.cssText = "font-size:0.72rem; color:#4a4a5a; margin-right:6px;";
+        empty.textContent = "No items in inventory.";
+        row.appendChild(empty);
+      } else {
+        for (const [itemId, qty] of Object.entries(partyItems)) {
+          if (qty <= 0) continue;
+          const item = ITEMS[itemId];
+          if (!item) continue;
+          const btn = this.makeBtn(`${item.name} ×${qty}`, "normal", () => {
+            if (item.targetType === "all_enemies") {
+              this.manager.useItem(itemId, "all_enemies");
+              this.pendingItemId = null;
+              this.updateMeshVisibility();
+              this.renderUI();
+            } else if (item.targetType === "self") {
+              this.manager.useItem(itemId, actor.id);
+              this.pendingItemId = null;
+              this.updateMeshVisibility();
+              this.renderUI();
+            } else {
+              // single_ally — enter target selection
+              this.pendingItemId = itemId;
+              this.renderUI();
+            }
+          });
+          btn.style.borderColor = "#6a4a1e";
+          btn.style.color = "#c89a3e";
+          btn.title = item.description;
+          row.appendChild(btn);
+        }
+      }
+      row.appendChild(this.makeBtn("✕  Cancel", "muted", () => {
+        this.pendingItemId = null;
+        this.renderUI();
+      }));
+      return row;
+    }
+
+    // ── Skill target selection mode ───────────────────────────────────────
     if (this.pendingSkillId) {
       const skill = SKILLS[this.pendingSkillId];
 
@@ -382,7 +487,7 @@ export class CombatScene extends BaseScene {
       return row;
     }
 
-    // Skill selection mode
+    // ── Skill selection mode ──────────────────────────────────────────────
     const livingEnemies = this.manager.getEnemies().filter((e) => e.stats.hp > 0);
     const livingAllies  = this.manager.getHeroes().filter((h) => h.stats.hp > 0 && h.id !== actor.id);
 
@@ -426,6 +531,21 @@ export class CombatScene extends BaseScene {
 
       row.appendChild(btn);
     }
+
+    // ── Items button (shown when party has items) ─────────────────────────
+    const partyItems = this.options.partyItems;
+    const totalItems = Object.values(partyItems).reduce((sum, q) => sum + q, 0);
+    if (totalItems > 0) {
+      const itemsBtn = this.makeBtn(`⚗ Items (${totalItems})`, "muted", () => {
+        this.pendingSkillId = null;
+        this.pendingItemId = "__select__";
+        this.renderUI();
+      });
+      itemsBtn.style.borderColor = "#6a4a1e";
+      itemsBtn.style.color = "#c89a3e";
+      row.appendChild(itemsBtn);
+    }
+
     return row;
   }
 

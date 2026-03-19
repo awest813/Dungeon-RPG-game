@@ -11,6 +11,7 @@ import {
 import type { Engine } from "@babylonjs/core";
 import { BaseScene } from "./BaseScene";
 import type { Hero } from "../types/GameTypes";
+import { ITEMS, ITEM_ORDER } from "../data/items";
 
 /** Options passed to TownScene by Game. */
 export interface TownSceneOptions {
@@ -28,6 +29,13 @@ export interface TownSceneOptions {
    * the party cannot afford it.
    */
   onUpgrade: (type: "blacksmith" | "inn" | "alchemist") => number;
+  /**
+   * Purchase one unit of a consumable item. Returns the new gold total on
+   * success, or -1 if the party cannot afford it.
+   */
+  onBuyItem: (itemId: string) => number;
+  /** Current party consumable inventory — read for the inventory display. */
+  partyItems: Record<string, number>;
   /** Start a new dungeon run. */
   onEnterDungeon: () => void;
 }

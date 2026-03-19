@@ -15,6 +15,7 @@ export const JOBS: Record<string, Job> = {
     description: "A backline attacker with ranged skills.",
     skillIds: ["fire_arrow", "oil_flask", "heal"],
     statBonus: { attack: 4, speed: 2 },
+    critChance: 0.2,
   },
   mage: {
     id: "mage",

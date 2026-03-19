@@ -239,6 +239,34 @@ export const SKILLS: Record<string, Skill> = {
     description: "A devastating charging attack with massive power (2-turn cooldown).",
   },
 
+  // ─── Milestone 5 enemy skills ─────────────────────────────────────────────
+  dark_pact: {
+    id: "dark_pact",
+    name: "Dark Pact",
+    type: "damage",
+    targetType: "single_enemy",
+    power: 15,
+    cooldown: 2,
+    appliesStatus: {
+      id: "bleed",
+      name: "Bleed",
+      duration: 2,
+      tickDamage: 4,
+      flags: ["bleeding"],
+    },
+    description: "Channel dark energy to deal heavy damage and inflict Bleed for 2 turns (2-turn cooldown).",
+  },
+  soul_drain: {
+    id: "soul_drain",
+    name: "Soul Drain",
+    type: "drain",
+    targetType: "single_enemy",
+    power: 12,
+    cooldown: 2,
+    drainRatio: 0.7,
+    description: "Drain the soul of a target — deals damage and heals the user for 70% of damage dealt (2-turn cooldown).",
+  },
+
   // ─── Mage spells ──────────────────────────────────────────────────────────
   mana_bolt: {
     id: "mana_bolt",
