@@ -137,12 +137,55 @@ src/
     SkillResolver.ts   Damage / heal / status calculation
     StatusSystem.ts    Status effect application and tick
   dungeon/
-    DungeonManager.ts  Multi-encounter dungeon runs (Milestone 2 scaffold)
+---
+
+## ✅ Milestone 5 — Item Shop, Party Inventory & Rogue Class (Complete)
+
+A fully wired consumable item economy, enemy loot drops, and a new Rogue hero class.
+
+| Feature | Status |
+|---|---|
+| **Party inventory** — `partyItems` shared across all encounters and runs | ✅ |
+| **Enemy loot drops** — consumables dropped after every encounter (depth-gated) | ✅ |
+| **Apothecary shop** in Town — buy all 6 consumables with gold | ✅ |
+| **Inventory panel** in Town — see exactly what the party is carrying | ✅ |
+| **Items usable in combat** — ⚗ Items button + full target-selection UI (pre-built M4) | ✅ |
+| **New Rogue job** — high speed (SPD +4), high crit (35%), skills: Backstab / Shadow Step / Garrote / Vanish | ✅ |
+| **Silvar (Rogue)** — 4th hero, fastest in the party, back-line assassin | ✅ |
+| **4 new Rogue skills** — Backstab (heavy dmg+Bleed), Shadow Step (dmg+Stun), Garrote (dmg+long Bleed), Vanish (60% DR) | ✅ |
+| **Dynamic hero 3D positioning** — combat scene adapts to any party size | ✅ |
+
+### Architecture changes
+
+- `DungeonManager.advanceEncounter()` now returns `EncounterRewards { levelUps, droppedItems }` instead of `LevelUpEvent[]`.
+- `DungeonManager.generateDrops()` rolls per-encounter item drops; drop table expands with dungeon depth.
+- `Game.ts`: added `private partyItems` state; `buyItem()` handler; passes `partyItems` to both `TownScene` and `CombatScene`; merges loot drops on encounter victory.
+- `TownScene`: two new panels — **Inventory** (chips showing held items + quantity) and **Apothecary** (2-column buy grid for all 6 consumables). Card is now scrollable (`max-height: 92vh`).
+- `CombatScene`: hero mesh start position is now calculated dynamically so a 4-hero party never overlaps enemies.
+
+---
+
+```
+src/
+  main.ts              Entry point
+  Game.ts              Engine + scene manager
+  scenes/
+    BaseScene.ts       Abstract base class
+    BootScene.ts       Splash screen
+    TownScene.ts       Hub between dungeon runs
+    CombatScene.ts     Turn-based battle
+  combat/
+    CombatManager.ts   Turn order, action dispatch, cooldown tracking
+    SkillResolver.ts   Damage / heal / status calculation
+    StatusSystem.ts    Status effect application and tick
+  dungeon/
+    DungeonManager.ts  Multi-encounter dungeon runs
   data/
-    skills.ts          Skill definitions (slash, guard, fire_arrow, oil_flask, heal, poison_dart, slam, weaken_shot + 13 new skills)
-    jobs.ts            Job/class definitions (Warrior, Ranger, Mage)
-    heroes.ts          Starting hero party (Aldric, Lyra, Mira)
-    enemies.ts         Enemy definitions (14 enemies across 4 tiers)
+    skills.ts          Skill definitions (41 skills total, incl. 4 new Rogue skills)
+    jobs.ts            Job/class definitions (Warrior, Ranger, Mage, Rogue)
+    heroes.ts          Starting hero party (Aldric, Lyra, Mira, Silvar)
+    enemies.ts         Enemy definitions (15 enemies across 4 tiers)
+    items.ts           Consumable items (6 items)
   types/
     GameTypes.ts       Core TypeScript interfaces
 ```

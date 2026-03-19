@@ -131,7 +131,8 @@ export class TownScene extends BaseScene {
     card.style.cssText = `
       pointer-events: auto;
       display: flex; flex-direction: column; align-items: stretch; gap: 12px;
-      min-width: 380px; max-width: 480px; width: 90vw;
+      min-width: 380px; max-width: 540px; width: 90vw;
+      max-height: 85vh; overflow-y: auto;
       background: rgba(8,8,14,0.96);
       border: 1px solid #4e4e5e;
       box-shadow: inset 0 0 0 1px rgba(78,78,94,0.3), 0 0 40px rgba(0,0,0,0.9);
@@ -141,9 +142,11 @@ export class TownScene extends BaseScene {
     card.appendChild(this.buildTitleRow());
     card.appendChild(this.buildDivider("◆"));
     card.appendChild(this.buildPartyPanel());
+    card.appendChild(this.buildInventoryPanel());
     card.appendChild(this.buildDivider("◆"));
     card.appendChild(this.buildGoldRow());
     card.appendChild(this.buildShopPanel());
+    card.appendChild(this.buildApothecaryPanel());
     card.appendChild(this.buildDivider("◆"));
     card.appendChild(this.buildEnterDungeonBtn());
 
@@ -341,6 +344,115 @@ export class TownScene extends BaseScene {
     }
 
     wrap.appendChild(btnRow);
+    return wrap;
+  }
+
+  // ─── Party inventory ──────────────────────────────────────────────────────
+
+  private buildInventoryPanel(): HTMLElement {
+    const wrap = document.createElement("div");
+
+    const heading = document.createElement("div");
+    heading.style.cssText = "font-size:0.65rem; color:#6a6a7a; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;";
+    heading.textContent = "Inventory";
+    wrap.appendChild(heading);
+
+    const partyItems = this.options.partyItems;
+    const ownedIds = Object.keys(partyItems).filter((id) => (partyItems[id] ?? 0) > 0);
+
+    if (ownedIds.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:0.72rem; color:#3a3a4a; font-style:italic;";
+      empty.textContent = "No items carried.";
+      wrap.appendChild(empty);
+    } else {
+      const grid = document.createElement("div");
+      grid.style.cssText = "display:flex; flex-wrap:wrap; gap:6px;";
+
+      for (const itemId of ownedIds) {
+        const item = ITEMS[itemId];
+        if (!item) continue;
+        const qty = partyItems[itemId];
+
+        const chip = document.createElement("div");
+        chip.style.cssText = `
+          display:flex; align-items:center; gap:5px;
+          background:#0e0e14; border:1px solid #3a3a4e; border-radius:2px;
+          padding:4px 8px; font-size:0.72rem; color:#c8a84a;
+        `;
+        chip.title = item.description;
+        chip.innerHTML = `<span style="color:#d8ceb8;">${item.name}</span> <span style="color:#c8963a;">×${qty}</span>`;
+        grid.appendChild(chip);
+      }
+
+      wrap.appendChild(grid);
+    }
+
+    return wrap;
+  }
+
+  // ─── Apothecary (consumable item shop) ────────────────────────────────────
+
+  private buildApothecaryPanel(): HTMLElement {
+    const wrap = document.createElement("div");
+
+    const heading = document.createElement("div");
+    heading.style.cssText = "font-size:0.65rem; color:#6a6a7a; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; margin-top:10px;";
+    heading.textContent = "Apothecary — Supplies";
+    wrap.appendChild(heading);
+
+    const grid = document.createElement("div");
+    grid.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:6px;";
+
+    for (const itemId of ITEM_ORDER) {
+      const item = ITEMS[itemId];
+      if (!item) continue;
+      const canAfford = this.options.getGold() >= item.cost;
+
+      const btn = document.createElement("button");
+      btn.style.cssText = `
+        font-family: var(--font-body, 'Cinzel', Georgia, serif);
+        display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+        padding:8px 10px; font-size:0.72rem; letter-spacing:0.4px;
+        color:${canAfford ? "#d8ceb8" : "#4a4a5a"};
+        background:linear-gradient(180deg,#14120a,#0a0904);
+        border:1px solid ${canAfford ? "#5a4a1e" : "#2a2a1e"};
+        cursor:${canAfford ? "pointer" : "not-allowed"};
+        border-radius:2px; text-align:left;
+        transition: border-color 0.12s, color 0.12s;
+      `;
+      btn.title = item.description;
+      btn.innerHTML = `
+        <span style="font-weight:600; color:${canAfford ? "#c8a84a" : "#4a4a2a"};">${item.name}</span>
+        <span style="color:${canAfford ? "#f0c060" : "#4a4a2a"};">◈ ${item.cost}</span>
+        <span style="font-size:0.62rem; color:${canAfford ? "#6a6a7a" : "#3a3a3a"}; white-space:normal; line-height:1.3;">${item.description}</span>
+      `;
+
+      if (canAfford) {
+        btn.addEventListener("mouseenter", () => {
+          btn.style.borderColor = "#c8963a";
+          btn.style.color = "#f0c060";
+        });
+        btn.addEventListener("mouseleave", () => {
+          btn.style.borderColor = "#5a4a1e";
+          btn.style.color = "#d8ceb8";
+        });
+        btn.addEventListener("click", () => {
+          const newGold = this.options.onBuyItem(itemId);
+          if (newGold < 0) {
+            btn.style.borderColor = "#8b1a1a";
+            setTimeout(() => { btn.style.borderColor = "#5a4a1e"; }, 700);
+            return;
+          }
+          this.removeTownUI();
+          this.showTownUI();
+        });
+      }
+
+      grid.appendChild(btn);
+    }
+
+    wrap.appendChild(grid);
     return wrap;
   }
 

@@ -149,7 +149,10 @@ export class CombatScene extends BaseScene {
       mat.specularColor = new Color3(0.5, 0.6, 0.8);
       mat.specularPower = 32;
       const box = MeshBuilder.CreateBox(h.id, { height: 2.0, width: 0.9, depth: 0.6 }, this.scene);
-      box.position.set(-4 + i * 2.2, 1.0, 0);
+      // Dynamic centering: keep heroes well left of center, spaced evenly
+      const spacing = 2.0;
+      const startX = -((heroes.length - 1) * spacing) / 2 - 2.5;
+      box.position.set(startX + i * spacing, 1.0, 0);
       box.material = mat;
       this.combatantMeshes.set(h.id, box);
     });

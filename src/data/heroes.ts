@@ -59,4 +59,23 @@ export const SAMPLE_HEROES: Hero[] = [
     xp: 0,
     level: 1,
   },
+  {
+    id: "hero_silvar",
+    name: "Silvar",
+    jobId: "rogue",
+    stats: {
+      maxHp: 55,
+      hp: 55,
+      attack: 12,
+      defense: 2,
+      speed: 12,
+      damageReduction: 0,
+    },
+    skillIds: ["backstab", "shadow_step", "garrote", "vanish"],
+    statusEffects: [],
+    lanePosition: 1,
+    skillCooldowns: {},
+    xp: 0,
+    level: 1,
+  },
 ];

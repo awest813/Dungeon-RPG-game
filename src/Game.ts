@@ -5,6 +5,7 @@ import { TownScene } from "./scenes/TownScene";
 import { CombatScene } from "./scenes/CombatScene";
 import { DungeonManager } from "./dungeon/DungeonManager";
 import { SAMPLE_HEROES } from "./data/heroes";
+import { ITEMS } from "./data/items";
 import type { Hero, Enemy } from "./types/GameTypes";
 
 /**
@@ -12,8 +13,9 @@ import type { Hero, Enemy } from "./types/GameTypes";
  * Owns the Babylon Engine and manages scene switching.
  *
  * State that persists across scenes:
- *   heroes — the party; their stats mutate in place during dungeon runs.
- *   gold   — accumulated from completed dungeon runs; spent on town upgrades.
+ *   heroes     — the party; their stats mutate in place during dungeon runs.
+ *   gold       — accumulated from completed dungeon runs; spent on town upgrades.
+ *   partyItems — shared consumable inventory; bought in town, used in combat.
  */
 export class Game {
   private engine: Engine;
@@ -27,6 +29,8 @@ export class Game {
   private dungeonDepth: number = 0;
   /** Active dungeon run (null when in town). */
   private dungeon: DungeonManager | null = null;
+  /** Shared consumable inventory — persists across encounters and runs. */
+  private partyItems: Record<string, number> = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true);
@@ -58,7 +62,9 @@ export class Game {
         heroes: this.heroes,
         getGold: () => this.gold,
         dungeonDepth: this.dungeonDepth,
+        partyItems: this.partyItems,
         onUpgrade: (type) => this.applyUpgrade(type),
+        onBuyItem: (itemId) => this.buyItem(itemId),
         onEnterDungeon: () => this.goToDungeon(),
       })
     );
@@ -77,6 +83,7 @@ export class Game {
         enemies,
         encounterNum: this.dungeon!.getEncounterNumber(),
         totalEncounters: this.dungeon!.getTotalEncounters(),
+        partyItems: this.partyItems,
         onVictory: (defeatedEnemies) => this.handleEncounterVictory(defeatedEnemies),
         onDefeat: () => this.handleDungeonDefeat(),
       })
@@ -85,7 +92,12 @@ export class Game {
 
   /** Called when the party wins an encounter. */
   private handleEncounterVictory(defeatedEnemies: Enemy[]): void {
-    this.dungeon!.advanceEncounter(defeatedEnemies);
+    const { droppedItems } = this.dungeon!.advanceEncounter(defeatedEnemies);
+
+    // Merge dropped items into the shared party inventory
+    for (const [itemId, qty] of Object.entries(droppedItems)) {
+      this.partyItems[itemId] = (this.partyItems[itemId] ?? 0) + qty;
+    }
 
     if (this.dungeon!.isComplete()) {
       this.gold += this.dungeon!.getGoldEarned();
@@ -143,6 +155,20 @@ export class Game {
         hero.stats.defense += 1;
       }
     }
+
+    return this.gold;
+  }
+
+  /**
+   * Purchase one unit of a consumable item from the Apothecary.
+   * Returns the new gold total on success, or -1 if insufficient funds.
+   */
+  private buyItem(itemId: string): number {
+    const item = ITEMS[itemId];
+    if (!item || this.gold < item.cost) return -1;
+
+    this.gold -= item.cost;
+    this.partyItems[itemId] = (this.partyItems[itemId] ?? 0) + 1;
 
     return this.gold;
   }

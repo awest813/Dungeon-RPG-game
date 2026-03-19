@@ -24,6 +24,23 @@ const DEPTH_HP_SCALE      = 8;  // +maxHp per depth level
 const DEPTH_ATTACK_SCALE  = 2;  // +attack per depth level
 const DEPTH_DEFENSE_SCALE = 1;  // +defense per depth level
 
+// ─── Item drop rates ─────────────────────────────────────────────────────────
+const DROP_POTION_BASE      = 0.35;  // base chance of a health potion drop per encounter
+const DROP_POTION_PER_ENEMY = 0.05;  // additional chance per defeated enemy
+const DROP_POTION_CAP       = 0.70;  // maximum chance regardless of enemy count
+const DROP_ANTIDOTE         = 0.20;  // chance of an antidote (any depth)
+const DROP_ELIXIR           = 0.15;  // chance of Elixir of Clarity (depth >= 1)
+const DROP_ETHER            = 0.12;  // chance of Ether Flask (depth >= 2)
+const DROP_ELIXIR_MIN_DEPTH = 1;     // minimum depth for Elixir drops
+const DROP_ETHER_MIN_DEPTH  = 2;     // minimum depth for Ether Flask drops
+
+/** Combined rewards returned by advanceEncounter(). */
+export interface EncounterRewards {
+  levelUps: LevelUpEvent[];
+  /** Consumable items dropped by enemies this encounter. */
+  droppedItems: Record<string, number>;
+}
+
 export class DungeonManager {
   /** Ordered list of enemy groups for this run. */
   private encounters: Enemy[][];
@@ -32,7 +49,7 @@ export class DungeonManager {
   /** Gold accumulated during this run. */
   private goldEarned: number = 0;
 
-  constructor(private heroes: Hero[], depth: number = 0) {
+  constructor(private heroes: Hero[], private depth: number = 0) {
     this.encounters = DungeonManager.buildProceduralEncounters(depth);
   }
 
@@ -54,12 +71,13 @@ export class DungeonManager {
    * Call this after a CombatManager signals "victory".
    * `defeatedEnemies` — list of enemies from the just-finished fight,
    *   used to tally XP and gold rewards.
-   * Returns level-up events for any heroes that leveled up.
+   * Returns combined rewards: level-up events and any items dropped by enemies.
    */
-  advanceEncounter(defeatedEnemies: Enemy[]): LevelUpEvent[] {
+  advanceEncounter(defeatedEnemies: Enemy[]): EncounterRewards {
     const levelUps = this.awardRewards(defeatedEnemies);
+    const droppedItems = this.generateDrops(defeatedEnemies.length);
     this.currentEncounterIndex += 1;
-    return levelUps;
+    return { levelUps, droppedItems };
   }
 
   /** Current encounter number (1-based) for display. */
@@ -118,6 +136,32 @@ export class DungeonManager {
       return { heroId: hero.id, heroName: hero.name, newLevel: hero.level };
     }
     return null;
+  }
+
+  /**
+   * Randomly generate consumable item drops for the encounter just completed.
+   * Drop rates scale with dungeon depth to reward deeper runs.
+   */
+  private generateDrops(enemyCount: number): Record<string, number> {
+    const drops: Record<string, number> = {};
+    const add = (itemId: string): void => {
+      drops[itemId] = (drops[itemId] ?? 0) + 1;
+    };
+
+    // Health potion: base chance + bonus per enemy defeated, capped
+    const potionChance = Math.min(DROP_POTION_CAP, DROP_POTION_BASE + enemyCount * DROP_POTION_PER_ENEMY);
+    if (Math.random() < potionChance) add("health_potion");
+
+    // Antidote: available at any depth
+    if (Math.random() < DROP_ANTIDOTE) add("antidote");
+
+    // Elixir of Clarity (cures stun/freeze/fear/blind): unlocked at depth 1+
+    if (this.depth >= DROP_ELIXIR_MIN_DEPTH && Math.random() < DROP_ELIXIR) add("elixir_of_clarity");
+
+    // Ether Flask (resets cooldowns): unlocked at depth 2+
+    if (this.depth >= DROP_ETHER_MIN_DEPTH && Math.random() < DROP_ETHER) add("ether_flask");
+
+    return drops;
   }
 
   // ─── Factory ──────────────────────────────────────────────────────────────
