@@ -20,6 +20,7 @@ export const SAMPLE_HEROES: Hero[] = [
     skillCooldowns: {},
     xp: 0,
     level: 1,
+    equipment: { weapon: null, armour: null, accessory: null },
   },
   {
     id: "hero_lyra",
@@ -39,6 +40,7 @@ export const SAMPLE_HEROES: Hero[] = [
     skillCooldowns: {},
     xp: 0,
     level: 1,
+    equipment: { weapon: null, armour: null, accessory: null },
   },
   {
     id: "hero_mira",
@@ -58,6 +60,7 @@ export const SAMPLE_HEROES: Hero[] = [
     skillCooldowns: {},
     xp: 0,
     level: 1,
+    equipment: { weapon: null, armour: null, accessory: null },
   },
   {
     id: "hero_silvar",
@@ -77,5 +80,6 @@ export const SAMPLE_HEROES: Hero[] = [
     skillCooldowns: {},
     xp: 0,
     level: 1,
+    equipment: { weapon: null, armour: null, accessory: null },
   },
 ];

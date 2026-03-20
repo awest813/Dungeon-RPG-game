@@ -1,5 +1,7 @@
 import type { Hero, Enemy, LevelUpEvent } from "../types/GameTypes";
+import type { Equipment } from "../types/GameTypes";
 import { SAMPLE_ENEMIES } from "../data/enemies";
+import { EQUIPMENT, EQUIP_DROP_POOL, EQUIP_DROP_CHANCE } from "../data/equipment";
 
 /**
  * DungeonManager — orchestrates multi-encounter dungeon runs.
@@ -39,6 +41,8 @@ export interface EncounterRewards {
   levelUps: LevelUpEvent[];
   /** Consumable items dropped by enemies this encounter. */
   droppedItems: Record<string, number>;
+  /** Equipment pieces dropped this encounter (may be empty). */
+  droppedEquipment: Equipment[];
 }
 
 export class DungeonManager {
@@ -76,8 +80,9 @@ export class DungeonManager {
   advanceEncounter(defeatedEnemies: Enemy[]): EncounterRewards {
     const levelUps = this.awardRewards(defeatedEnemies);
     const droppedItems = this.generateDrops(defeatedEnemies.length);
+    const droppedEquipment = this.generateEquipDrops(defeatedEnemies);
     this.currentEncounterIndex += 1;
-    return { levelUps, droppedItems };
+    return { levelUps, droppedItems, droppedEquipment };
   }
 
   /** Current encounter number (1-based) for display. */
@@ -164,7 +169,39 @@ export class DungeonManager {
     return drops;
   }
 
-  // ─── Factory ──────────────────────────────────────────────────────────────
+  /**
+   * Randomly generate equipment drops based on the tier of enemies defeated.
+   * Boss enemies have a high chance; hard-tier enemies a moderate chance;
+   * mid-tier enemies a small chance.  At most one piece drops per encounter.
+   */
+  private generateEquipDrops(defeatedEnemies: Enemy[]): Equipment[] {
+    const drops: Equipment[] = [];
+
+    // Classify the encounter by the highest-tier enemy present
+    const ids = defeatedEnemies.map((e) => e.id.replace(/_\d+$/, ""));
+    const isBoss  = ids.some((id) => id === "enemy_fire_drake" || id === "enemy_lich");
+    const isHard  = !isBoss && ids.some((id) =>
+      ["enemy_troll", "enemy_minotaur", "enemy_basilisk"].includes(id)
+    );
+    const isMid   = !isBoss && !isHard && ids.some((id) =>
+      ["enemy_orc", "enemy_skeleton_mage", "enemy_dark_archer", "enemy_harpy", "enemy_wight", "enemy_cultist"].includes(id)
+    );
+
+    const tier: "boss" | "hard" | "mid" | null =
+      isBoss ? "boss" : isHard ? "hard" : isMid ? "mid" : null;
+
+    if (!tier) return drops;
+
+    const chance = EQUIP_DROP_CHANCE[tier];
+    if (Math.random() >= chance) return drops;
+
+    const pool = EQUIP_DROP_POOL[tier];
+    const equipId = pool[Math.floor(Math.random() * pool.length)];
+    const equip = EQUIPMENT[equipId];
+    if (equip) drops.push(equip);
+
+    return drops;
+  }
 
   /**
    * Build a procedurally generated 3-encounter dungeon.
