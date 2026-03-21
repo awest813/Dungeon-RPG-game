@@ -287,6 +287,12 @@ export class CombatScene extends BaseScene {
     const hpWrap = document.createElement("div");
     hpWrap.style.cssText = "width:100%; height:6px; background:#1a1a22; border:1px solid #2e2e3e; overflow:hidden; border-radius:1px;";
     hpWrap.title = `HP ${c.stats.hp}/${c.stats.maxHp}`;
+    hpWrap.setAttribute("role", "progressbar");
+    hpWrap.setAttribute("aria-label", `${c.name} Health`);
+    hpWrap.setAttribute("aria-valuenow", c.stats.hp.toString());
+    hpWrap.setAttribute("aria-valuemin", "0");
+    hpWrap.setAttribute("aria-valuemax", c.stats.maxHp.toString());
+
     const hpFill = document.createElement("div");
     const hpColor = hpPct > 50 ? HP_COLOR_HIGH : hpPct > 25 ? HP_COLOR_MED : HP_COLOR_LOW;
     hpFill.style.cssText = `height:100%; width:${hpPct}%; background:${hpColor}; transition:width 0.3s;`;
@@ -307,6 +313,12 @@ export class CombatScene extends BaseScene {
       const xpWrap = document.createElement("div");
       xpWrap.style.cssText = "width:100%; height:3px; background:#1a1a22; border:1px solid #2e2e3e; overflow:hidden; border-radius:1px;";
       xpWrap.title = `XP ${hero.xp}/${xpNeed}`;
+      xpWrap.setAttribute("role", "progressbar");
+      xpWrap.setAttribute("aria-label", `${hero.name} Experience`);
+      xpWrap.setAttribute("aria-valuenow", hero.xp.toString());
+      xpWrap.setAttribute("aria-valuemin", "0");
+      xpWrap.setAttribute("aria-valuemax", xpNeed.toString());
+
       const xpFill = document.createElement("div");
       xpFill.style.cssText = `height:100%; width:${xpPct}%; background:#2a5a9a; transition:width 0.3s;`;
       xpWrap.appendChild(xpFill);
