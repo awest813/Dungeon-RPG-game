@@ -4,7 +4,7 @@ A browser-based, turn-based dungeon RPG built with [Babylon.js](https://www.baby
 
 ## 🎮 About
 
-Lead a party of four heroes — Warrior, Ranger, Mage, and Rogue — through procedurally generated dungeon encounters. Combat is turn-based with speed-based initiative, skill cooldowns, status effects, AoE spells, consumable items, and persistent XP/gold across runs.
+Lead a party of four heroes — Warrior, Ranger, Mage, and Rogue — through procedurally generated dungeon encounters. Combat is turn-based with speed-based initiative, skill cooldowns, status effects, AoE spells, consumable items, equippable gear, and persistent XP/gold across runs.
 
 ## 🧭 Prerequisites
 
@@ -125,19 +125,26 @@ Consumable item shop, enemy loot drops, in-combat item use, and the Rogue hero c
 
 ---
 
-### 🔜 Milestone 6 — Equipment & Gear System *(planned)*
+### ✅ Milestone 6 — Equipment & Gear System
 
 Give heroes permanent stat bonuses through equippable weapons and armour found or bought during runs.
 
 | Feature | Status |
 |---|---|
-| Equipment slot system (weapon, armour, accessory per hero) | 🔲 |
-| Weapon definitions with ATK bonuses and special effects | 🔲 |
-| Armour definitions with DEF bonuses | 🔲 |
-| Equipment drops from bosses and mid-tier enemies | 🔲 |
-| Blacksmith shop upgrade — sell / buy / compare gear | 🔲 |
-| Equipment display in Town party stats panel | 🔲 |
-| Equipment persists across dungeon runs | 🔲 |
+| Equipment slot system (weapon, armour, accessory per hero) | ✅ |
+| Weapon definitions with ATK / SPD bonuses and crit chance effects | ✅ |
+| Armour definitions with DEF / HP bonuses | ✅ |
+| Accessory definitions with mixed stat bonuses | ✅ |
+| Equipment drops from mid-tier, hard-tier, and boss enemies | ✅ |
+| Armory shop in Town — buy common-rarity gear with gold | ✅ |
+| Equipment stash — unequipped gear held between runs | ✅ |
+| One-click equip from stash onto any hero | ✅ |
+| One-click unequip from hero slot (returns item to stash) | ✅ |
+| Equipment display in Town party stats panel (slot chips per hero) | ✅ |
+| Stat bonuses applied / removed in place when equipping / unequipping | ✅ |
+| Equipment persists across dungeon runs | ✅ |
+
+**Key changes:** `GameTypes.ts` gains `EquipSlotType`, `EquipRarity`, `Equipment`; `Hero` gains `equipment` field; `src/data/equipment.ts` defines 17 items across 3 rarity tiers; `DungeonManager.advanceEncounter()` returns `droppedEquipment`; `Game.ts` gains `equipStash`, `buyEquipment()`, `equipItem()`, `unequipItem()`; `TownScene` adds Armory shop and Equipment Stash panels plus per-hero gear-slot chips.
 
 ---
 

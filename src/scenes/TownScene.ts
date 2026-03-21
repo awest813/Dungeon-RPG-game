@@ -11,7 +11,10 @@ import {
 import type { Engine } from "@babylonjs/core";
 import { BaseScene } from "./BaseScene";
 import type { Hero } from "../types/GameTypes";
+import type { EquipSlotType } from "../types/GameTypes";
+import type { Equipment } from "../types/GameTypes";
 import { ITEMS, ITEM_ORDER } from "../data/items";
+import { EQUIPMENT, ARMORY_ORDER } from "../data/equipment";
 
 /** Options passed to TownScene by Game. */
 export interface TownSceneOptions {
@@ -34,8 +37,25 @@ export interface TownSceneOptions {
    * success, or -1 if the party cannot afford it.
    */
   onBuyItem: (itemId: string) => number;
+  /**
+   * Purchase an equipment piece from the Armory. Adds to equipStash.
+   * Returns new gold on success, -1 on failure.
+   */
+  onBuyEquipment: (equipId: string) => number;
+  /**
+   * Equip a stash item (by index) onto a hero.
+   * Returns new gold on success, -1 on failure.
+   */
+  onEquipItem: (stashIndex: number, heroId: string) => number;
+  /**
+   * Unequip an item slot from a hero, sending it back to stash.
+   * Returns new gold on success, -1 on failure.
+   */
+  onUnequipItem: (slot: EquipSlotType, heroId: string) => number;
   /** Current party consumable inventory — read for the inventory display. */
   partyItems: Record<string, number>;
+  /** Unequipped equipment available to assign to heroes. */
+  equipStash: Equipment[];
   /** Start a new dungeon run. */
   onEnterDungeon: () => void;
 }
@@ -50,6 +70,12 @@ export interface TownSceneOptions {
  *   - An "Enter Dungeon" button to start the next run.
  */
 export class TownScene extends BaseScene {
+  /**
+   * When not null, the player has selected a stash item to equip and is now
+   * choosing which hero should receive it.
+   */
+  private pendingEquipIndex: number | null = null;
+
   constructor(engine: Engine, private options: TownSceneOptions) {
     super(engine);
   }
@@ -131,7 +157,7 @@ export class TownScene extends BaseScene {
     card.style.cssText = `
       pointer-events: auto;
       display: flex; flex-direction: column; align-items: stretch; gap: 12px;
-      min-width: 380px; max-width: 540px; width: 90vw;
+      min-width: 380px; max-width: 560px; width: 90vw;
       max-height: 85vh; overflow-y: auto;
       background: rgba(8,8,14,0.96);
       border: 1px solid #4e4e5e;
@@ -147,6 +173,8 @@ export class TownScene extends BaseScene {
     card.appendChild(this.buildGoldRow());
     card.appendChild(this.buildShopPanel());
     card.appendChild(this.buildApothecaryPanel());
+    card.appendChild(this.buildArmoryPanel());
+    card.appendChild(this.buildEquipStashPanel());
     card.appendChild(this.buildDivider("◆"));
     card.appendChild(this.buildEnterDungeonBtn());
 
@@ -208,14 +236,15 @@ export class TownScene extends BaseScene {
     const xpNeed = hero.level * 50;
     const xpPct  = Math.min(100, Math.round((hero.xp / xpNeed) * 100));
 
+    const outer = document.createElement("div");
+    outer.style.cssText = "padding: 6px 0; border-bottom: 1px solid #1e1e28;";
+
     const row = document.createElement("div");
     row.style.cssText = `
       display: grid;
       grid-template-columns: 1fr auto;
       column-gap: 14px;
       align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid #1e1e28;
     `;
 
     // Left: name + bars
@@ -243,10 +272,51 @@ export class TownScene extends BaseScene {
     right.innerHTML = `
       <div>ATK <span style="color:#d8ceb8">${hero.stats.attack}</span></div>
       <div>DEF <span style="color:#d8ceb8">${hero.stats.defense}</span></div>
+      <div>SPD <span style="color:#d8ceb8">${hero.stats.speed}</span></div>
     `;
     row.appendChild(right);
+    outer.appendChild(row);
 
-    return row;
+    // Equipment slots row
+    const slots: EquipSlotType[] = ["weapon", "armour", "accessory"];
+    const slotIcons: Record<EquipSlotType, string> = { weapon: "⚔", armour: "🛡", accessory: "💎" };
+    const equipRow = document.createElement("div");
+    equipRow.style.cssText = "display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;";
+
+    for (const slot of slots) {
+      const equipId = hero.equipment[slot];
+      const equip   = equipId ? EQUIPMENT[equipId] : null;
+      const chip    = document.createElement("div");
+      chip.style.cssText = `
+        display:flex; align-items:center; gap:3px;
+        background:${equip ? "#0e0e1a" : "#08080e"};
+        border:1px solid ${equip ? "#5a4a2e" : "#2a2a38"};
+        border-radius:2px; padding:2px 7px; font-size:0.65rem;
+        color:${equip ? "#c8a84a" : "#3a3a4a"};
+        cursor:${equip ? "pointer" : "default"};
+        transition: border-color 0.12s;
+      `;
+      chip.title = equip
+        ? `${equip.name} — ${equip.description}\nClick to unequip`
+        : `${slot} — empty`;
+      chip.innerHTML = `${slotIcons[slot]} <span>${equip ? equip.name : `—`}</span>`;
+
+      if (equip) {
+        chip.addEventListener("mouseenter", () => { chip.style.borderColor = "#8b1a1a"; });
+        chip.addEventListener("mouseleave", () => { chip.style.borderColor = "#5a4a2e"; });
+        chip.addEventListener("click", () => {
+          this.options.onUnequipItem(slot, hero.id);
+          this.removeTownUI();
+          this.pendingEquipIndex = null;
+          this.showTownUI();
+        });
+      }
+
+      equipRow.appendChild(chip);
+    }
+
+    outer.appendChild(equipRow);
+    return outer;
   }
 
   /** Creates an HP/XP bar element with a tooltip and ARIA progressbar attributes. */
@@ -463,7 +533,186 @@ export class TownScene extends BaseScene {
     return wrap;
   }
 
-  // ─── Enter dungeon ────────────────────────────────────────────────────────
+  // ─── Armory (equipment shop) ──────────────────────────────────────────────
+
+  private buildArmoryPanel(): HTMLElement {
+    const wrap = document.createElement("div");
+
+    const heading = document.createElement("div");
+    heading.style.cssText = "font-size:0.65rem; color:#6a6a7a; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; margin-top:10px;";
+    heading.textContent = "Armory — Equipment";
+    wrap.appendChild(heading);
+
+    const grid = document.createElement("div");
+    grid.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:6px;";
+
+    const rarityColors: Record<string, string> = {
+      common: "#c8a84a",
+      uncommon: "#7eb8d4",
+      rare: "#c060e8",
+    };
+
+    for (const equipId of ARMORY_ORDER) {
+      const equip = EQUIPMENT[equipId];
+      if (!equip) continue;
+      const canAfford = this.options.getGold() >= equip.cost;
+      const col = rarityColors[equip.rarity] ?? "#c8a84a";
+
+      const btn = document.createElement("button");
+      btn.style.cssText = `
+        font-family: var(--font-body, 'Cinzel', Georgia, serif);
+        display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+        padding:8px 10px; font-size:0.72rem; letter-spacing:0.4px;
+        color:${canAfford ? "#d8ceb8" : "#4a4a5a"};
+        background:linear-gradient(180deg,#0e0e1a,#08080e);
+        border:1px solid ${canAfford ? "#3a3a5e" : "#2a2a3e"};
+        cursor:${canAfford ? "pointer" : "not-allowed"};
+        border-radius:2px; text-align:left;
+        transition: border-color 0.12s, color 0.12s;
+      `;
+      btn.title = equip.description;
+      const slotLabel = { weapon: "⚔", armour: "🛡", accessory: "💎" }[equip.slot];
+      btn.innerHTML = `
+        <span style="font-weight:600; color:${canAfford ? col : "#4a4a2a"};">${slotLabel} ${equip.name}</span>
+        <span style="color:${canAfford ? "#f0c060" : "#4a4a2a"};">◈ ${equip.cost}</span>
+        <span style="font-size:0.62rem; color:${canAfford ? "#6a6a7a" : "#3a3a3a"}; white-space:normal; line-height:1.3;">${equip.description}</span>
+      `;
+
+      if (canAfford) {
+        btn.addEventListener("mouseenter", () => {
+          btn.style.borderColor = "#7878a8";
+          btn.style.color = "#f0e8d0";
+        });
+        btn.addEventListener("mouseleave", () => {
+          btn.style.borderColor = "#3a3a5e";
+          btn.style.color = "#d8ceb8";
+        });
+        btn.addEventListener("click", () => {
+          const newGold = this.options.onBuyEquipment(equipId);
+          if (newGold < 0) {
+            btn.style.borderColor = "#8b1a1a";
+            setTimeout(() => { btn.style.borderColor = "#3a3a5e"; }, 700);
+            return;
+          }
+          this.removeTownUI();
+          this.showTownUI();
+        });
+      }
+
+      grid.appendChild(btn);
+    }
+
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
+  // ─── Equipment stash panel ────────────────────────────────────────────────
+
+  private buildEquipStashPanel(): HTMLElement {
+    const wrap = document.createElement("div");
+
+    const heading = document.createElement("div");
+    heading.style.cssText = "font-size:0.65rem; color:#6a6a7a; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; margin-top:10px;";
+    heading.textContent = "Equipment Stash";
+    wrap.appendChild(heading);
+
+    const stash = this.options.equipStash;
+
+    if (stash.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:0.72rem; color:#3a3a4a; font-style:italic;";
+      empty.textContent = "No equipment in stash.";
+      wrap.appendChild(empty);
+      return wrap;
+    }
+
+    const rarityColors: Record<string, string> = {
+      common: "#c8a84a",
+      uncommon: "#7eb8d4",
+      rare: "#c060e8",
+    };
+
+    // Show "select hero" prompt if player has chosen a stash item
+    if (this.pendingEquipIndex !== null) {
+      const equip = stash[this.pendingEquipIndex];
+      if (equip) {
+        const prompt = document.createElement("div");
+        prompt.style.cssText = "font-size:0.75rem; color:#d8ceb8; margin-bottom:6px;";
+        prompt.textContent = `Equip ${equip.name} on:`;
+        wrap.appendChild(prompt);
+
+        const heroGrid = document.createElement("div");
+        heroGrid.style.cssText = "display:flex; gap:6px; flex-wrap:wrap;";
+
+        for (const hero of this.options.heroes) {
+          const btn = document.createElement("button");
+          btn.style.cssText = `
+            font-family: var(--font-body, 'Cinzel', Georgia, serif);
+            padding:6px 12px; font-size:0.72rem; color:#aec8e8;
+            background:linear-gradient(180deg,#0e1420,#080e18);
+            border:1px solid #3a5a7e; border-radius:2px; cursor:pointer;
+            transition: border-color 0.12s;
+          `;
+          btn.textContent = hero.name;
+          btn.addEventListener("mouseenter", () => { btn.style.borderColor = "#78aad0"; });
+          btn.addEventListener("mouseleave", () => { btn.style.borderColor = "#3a5a7e"; });
+          btn.addEventListener("click", () => {
+            this.options.onEquipItem(this.pendingEquipIndex!, hero.id);
+            this.pendingEquipIndex = null;
+            this.removeTownUI();
+            this.showTownUI();
+          });
+          heroGrid.appendChild(btn);
+        }
+
+        const cancel = document.createElement("button");
+        cancel.style.cssText = `
+          font-family: var(--font-body, 'Cinzel', Georgia, serif);
+          padding:6px 12px; font-size:0.72rem; color:#7a7a8a;
+          background:#08080e; border:1px solid #3a3a4e; border-radius:2px; cursor:pointer;
+        `;
+        cancel.textContent = "Cancel";
+        cancel.addEventListener("click", () => {
+          this.pendingEquipIndex = null;
+          this.removeTownUI();
+          this.showTownUI();
+        });
+        heroGrid.appendChild(cancel);
+
+        wrap.appendChild(heroGrid);
+        return wrap;
+      }
+    }
+
+    // Normal stash list
+    const grid = document.createElement("div");
+    grid.style.cssText = "display:flex; flex-wrap:wrap; gap:6px;";
+
+    stash.forEach((equip, index) => {
+      const col = rarityColors[equip.rarity] ?? "#c8a84a";
+      const slotLabel = { weapon: "⚔", armour: "🛡", accessory: "💎" }[equip.slot];
+      const chip = document.createElement("div");
+      chip.style.cssText = `
+        display:flex; align-items:center; gap:5px;
+        background:#0e0e1a; border:1px solid #3a3a5e; border-radius:2px;
+        padding:4px 9px; font-size:0.72rem; color:${col};
+        cursor:pointer; transition: border-color 0.12s;
+      `;
+      chip.title = `${equip.description}\nClick to equip on a hero`;
+      chip.innerHTML = `${slotLabel} <span style="color:#d8ceb8;">${equip.name}</span>`;
+      chip.addEventListener("mouseenter", () => { chip.style.borderColor = "#7878a8"; });
+      chip.addEventListener("mouseleave", () => { chip.style.borderColor = "#3a3a5e"; });
+      chip.addEventListener("click", () => {
+        this.pendingEquipIndex = index;
+        this.removeTownUI();
+        this.showTownUI();
+      });
+      grid.appendChild(chip);
+    });
+
+    wrap.appendChild(grid);
+    return wrap;
+  }
 
   private buildEnterDungeonBtn(): HTMLElement {
     const btn = document.createElement("button");

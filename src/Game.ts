@@ -32,6 +32,11 @@ export class Game {
   private dungeon: DungeonManager | null = null;
   /** Shared consumable inventory — persists across encounters and runs. */
   private partyItems: Record<string, number> = {};
+  /**
+   * Unequipped equipment pieces accumulated from drops and shop purchases.
+   * Heroes pick items from this stash to fill their gear slots.
+   */
+  private equipStash: Equipment[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true);
@@ -64,8 +69,12 @@ export class Game {
         getGold: () => this.gold,
         dungeonDepth: this.dungeonDepth,
         partyItems: this.partyItems,
+        equipStash: this.equipStash,
         onUpgrade: (type) => this.applyUpgrade(type),
         onBuyItem: (itemId) => this.buyItem(itemId),
+        onBuyEquipment: (equipId) => this.buyEquipment(equipId),
+        onEquipItem: (stashIndex, heroId) => this.equipItem(stashIndex, heroId),
+        onUnequipItem: (slot, heroId) => this.unequipItem(slot, heroId),
         onEnterDungeon: () => this.goToDungeon(),
       })
     );
@@ -93,11 +102,16 @@ export class Game {
 
   /** Called when the party wins an encounter. */
   private handleEncounterVictory(defeatedEnemies: Enemy[]): void {
-    const { droppedItems } = this.dungeon!.advanceEncounter(defeatedEnemies);
+    const { droppedItems, droppedEquipment } = this.dungeon!.advanceEncounter(defeatedEnemies);
 
-    // Merge dropped items into the shared party inventory
+    // Merge dropped consumables into the shared party inventory
     for (const [itemId, qty] of Object.entries(droppedItems)) {
       this.partyItems[itemId] = (this.partyItems[itemId] ?? 0) + qty;
+    }
+
+    // Add dropped equipment pieces to the stash
+    for (const equip of droppedEquipment) {
+      this.equipStash.push(equip);
     }
 
     if (this.dungeon!.isComplete()) {
@@ -172,6 +186,101 @@ export class Game {
     this.partyItems[itemId] = (this.partyItems[itemId] ?? 0) + 1;
 
     return this.gold;
+  }
+
+  /**
+   * Purchase an equipment piece from the Armory.
+   * Adds it to equipStash.
+   * Returns the new gold total on success, or -1 if insufficient funds.
+   */
+  private buyEquipment(equipId: string): number {
+    const equip = EQUIPMENT[equipId];
+    if (!equip || this.gold < equip.cost) return -1;
+
+    this.gold -= equip.cost;
+    this.equipStash.push(equip);
+
+    return this.gold;
+  }
+
+  /**
+   * Equip a stash item (by index) onto the specified hero.
+   * If the hero already has something in that slot, the old item is returned
+   * to the stash.  Stat bonuses are applied (and old ones removed) in place.
+   * Returns the new gold total (unchanged) on success, or -1 on error.
+   */
+  private equipItem(stashIndex: number, heroId: string): number {
+    const equip = this.equipStash[stashIndex];
+    if (!equip) return -1;
+
+    const hero = this.heroes.find((h) => h.id === heroId);
+    if (!hero) return -1;
+
+    // Remove old item from slot (if any), returning it to stash
+    const oldEquipId = hero.equipment[equip.slot];
+    if (oldEquipId) {
+      const oldEquip = EQUIPMENT[oldEquipId];
+      if (oldEquip) {
+        this.removeEquipBonuses(hero, oldEquip);
+        this.equipStash.push(oldEquip);
+      }
+    }
+
+    // Remove the chosen item from the stash
+    this.equipStash.splice(stashIndex, 1);
+
+    // Apply stat bonuses
+    this.applyEquipBonuses(hero, equip);
+
+    // Record equipped item
+    hero.equipment[equip.slot] = equip.id;
+
+    return this.gold;
+  }
+
+  /**
+   * Unequip the item in the given slot from the hero, returning it to stash.
+   * Returns the new gold total (unchanged) on success, or -1 on error.
+   */
+  private unequipItem(slot: EquipSlotType, heroId: string): number {
+    const hero = this.heroes.find((h) => h.id === heroId);
+    if (!hero) return -1;
+
+    const equipId = hero.equipment[slot];
+    if (!equipId) return -1;
+
+    const equip = EQUIPMENT[equipId];
+    if (equip) {
+      this.removeEquipBonuses(hero, equip);
+      this.equipStash.push(equip);
+    }
+
+    hero.equipment[slot] = null;
+    return this.gold;
+  }
+
+  // ─── Equipment stat helpers ───────────────────────────────────────────────
+
+  private applyEquipBonuses(hero: Hero, equip: Equipment): void {
+    const b = equip.statBonus;
+    if (b.attack)   hero.stats.attack   += b.attack;
+    if (b.defense)  hero.stats.defense  += b.defense;
+    if (b.speed)    hero.stats.speed    += b.speed;
+    if (b.maxHp) {
+      hero.stats.maxHp += b.maxHp;
+      hero.stats.hp = Math.min(hero.stats.hp + b.maxHp, hero.stats.maxHp);
+    }
+  }
+
+  private removeEquipBonuses(hero: Hero, equip: Equipment): void {
+    const b = equip.statBonus;
+    if (b.attack)   hero.stats.attack   -= b.attack;
+    if (b.defense)  hero.stats.defense  -= b.defense;
+    if (b.speed)    hero.stats.speed    -= b.speed;
+    if (b.maxHp) {
+      hero.stats.maxHp -= b.maxHp;
+      hero.stats.hp = Math.min(hero.stats.hp, hero.stats.maxHp);
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

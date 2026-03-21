@@ -1,6 +1,30 @@
 // Core game types and interfaces
 // These are pure data types — no rendering logic here.
 
+/** Equipment slot categories */
+export type EquipSlotType = "weapon" | "armour" | "accessory";
+
+/** Rarity tiers — controls drop tables and visual presentation */
+export type EquipRarity = "common" | "uncommon" | "rare";
+
+/** A piece of equippable gear that grants permanent stat bonuses to a hero */
+export interface Equipment {
+  id: string;
+  name: string;
+  slot: EquipSlotType;
+  rarity: EquipRarity;
+  /** Flat stat bonuses applied to the hero while this item is equipped */
+  statBonus: Partial<Stats>;
+  /**
+   * Additional critical hit chance (0–1) added to the hero while equipped.
+   * Stacks with job critChance.
+   */
+  critBonus?: number;
+  /** Gold cost in the Armory shop */
+  cost: number;
+  description: string;
+}
+
 /** Base stats for any combatant */
 export interface Stats {
   maxHp: number;
@@ -109,6 +133,12 @@ export interface Hero {
   xp: number;
   /** Current level (starts at 1) */
   level: number;
+  /**
+   * Currently equipped gear.
+   * Maps slot type → equipment id, or null when the slot is empty.
+   * Stat bonuses from equipped items are applied directly to hero.stats.
+   */
+  equipment: Record<EquipSlotType, string | null>;
 }
 
 /** An enemy combatant */
