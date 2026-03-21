@@ -1,5 +1,5 @@
 import type { Hero, Enemy, LevelUpEvent } from "../types/GameTypes";
-import type { Equipment } from "../types/GameTypes";
+import { cloneEnemy } from "../types/GameTypes";
 import { SAMPLE_ENEMIES } from "../data/enemies";
 import { EQUIPMENT, EQUIP_DROP_POOL, EQUIP_DROP_CHANCE } from "../data/equipment";
 
@@ -234,7 +234,7 @@ export class DungeonManager {
     // Unique id counter so two enemies of the same type can be targeted individually
     let seq = 0;
     const clone = (e: Enemy): Enemy => {
-      const c = JSON.parse(JSON.stringify(e)) as Enemy;
+      const c = cloneEnemy(e);
       c.id = `${e.id}_${seq++}`;
       return c;
     };

@@ -260,9 +260,9 @@ export class TownScene extends BaseScene {
     left.appendChild(nameRow);
 
     // HP bar
-    left.appendChild(this.makeBar(hpPct, "es-bar-hp", `HP ${hero.stats.hp}/${hero.stats.maxHp}`));
+    left.appendChild(this.makeBar(hpPct, "es-bar-hp", `HP ${hero.stats.hp}/${hero.stats.maxHp}`, `${hero.name} Health`, hero.stats.hp, hero.stats.maxHp));
     // XP bar
-    left.appendChild(this.makeBar(xpPct, "es-bar-xp", `XP ${hero.xp}/${xpNeed}`));
+    left.appendChild(this.makeBar(xpPct, "es-bar-xp", `XP ${hero.xp}/${xpNeed}`, `${hero.name} Experience`, hero.xp, xpNeed));
 
     row.appendChild(left);
 
@@ -319,11 +319,17 @@ export class TownScene extends BaseScene {
     return outer;
   }
 
-  /** Creates an HP/XP bar element with a tooltip. */
-  private makeBar(pct: number, cls: string, title: string): HTMLElement {
+  /** Creates an HP/XP bar element with a tooltip and ARIA progressbar attributes. */
+  private makeBar(pct: number, cls: string, title: string, ariaLabel: string, valueNow: number, valueMax: number): HTMLElement {
     const wrap = document.createElement("div");
     wrap.className = "es-bar-wrap";
     wrap.title = title;
+    wrap.setAttribute("role", "progressbar");
+    wrap.setAttribute("aria-label", ariaLabel);
+    wrap.setAttribute("aria-valuenow", valueNow.toString());
+    wrap.setAttribute("aria-valuemin", "0");
+    wrap.setAttribute("aria-valuemax", valueMax.toString());
+
     const fill = document.createElement("div");
     fill.className = `es-bar-fill ${cls}`;
     fill.style.width = `${pct}%`;
@@ -480,6 +486,7 @@ export class TownScene extends BaseScene {
       const canAfford = this.options.getGold() >= item.cost;
 
       const btn = document.createElement("button");
+      btn.disabled = !canAfford;
       btn.style.cssText = `
         font-family: var(--font-body, 'Cinzel', Georgia, serif);
         display:flex; flex-direction:column; align-items:flex-start; gap:2px;

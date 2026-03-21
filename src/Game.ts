@@ -6,9 +6,8 @@ import { CombatScene } from "./scenes/CombatScene";
 import { DungeonManager } from "./dungeon/DungeonManager";
 import { SAMPLE_HEROES } from "./data/heroes";
 import { ITEMS } from "./data/items";
-import { EQUIPMENT } from "./data/equipment";
-import type { Hero, Enemy, EquipSlotType } from "./types/GameTypes";
-import type { Equipment } from "./types/GameTypes";
+import type { Hero, Enemy } from "./types/GameTypes";
+import { cloneHero } from "./types/GameTypes";
 
 /**
  * Game — the top-level controller.
@@ -42,7 +41,7 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true);
     // Clone SAMPLE_HEROES once so we own a mutable copy.
-    this.heroes = JSON.parse(JSON.stringify(SAMPLE_HEROES)) as Hero[];
+    this.heroes = SAMPLE_HEROES.map(cloneHero);
 
     window.addEventListener("resize", () => {
       this.engine.resize();
