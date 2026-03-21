@@ -129,6 +129,35 @@ export function isHero(c: Combatant): c is Hero {
   return "jobId" in c;
 }
 
+/** Deep clone a Hero object (faster than JSON.parse/stringify) */
+export function cloneHero(hero: Hero): Hero {
+  return {
+    ...hero,
+    stats: { ...hero.stats },
+    skillIds: [...hero.skillIds],
+    statusEffects: hero.statusEffects.map((se) => ({
+      ...se,
+      flags: se.flags ? [...se.flags] : undefined,
+      statModifier: se.statModifier ? { ...se.statModifier } : undefined,
+    })),
+    skillCooldowns: { ...hero.skillCooldowns },
+  };
+}
+
+/** Deep clone an Enemy object (faster than JSON.parse/stringify) */
+export function cloneEnemy(enemy: Enemy): Enemy {
+  return {
+    ...enemy,
+    stats: { ...enemy.stats },
+    skillIds: [...enemy.skillIds],
+    statusEffects: enemy.statusEffects.map((se) => ({
+      ...se,
+      flags: se.flags ? [...se.flags] : undefined,
+      statModifier: se.statModifier ? { ...se.statModifier } : undefined,
+    })),
+  };
+}
+
 /** Result object returned after resolving a skill or item use */
 export interface SkillResult {
   actorId: string;

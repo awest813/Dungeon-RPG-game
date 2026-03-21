@@ -1,5 +1,5 @@
 import type { Hero, Enemy, Combatant, BattleState, SkillResult } from "../types/GameTypes";
-import { isHero } from "../types/GameTypes";
+import { isHero, cloneEnemy } from "../types/GameTypes";
 import { tickStatuses, hasStatusFlag, removeStatus, applyStatus } from "./StatusSystem";
 import { resolveSkill } from "./SkillResolver";
 import { SKILLS } from "../data/skills";
@@ -34,7 +34,7 @@ export class CombatManager {
     // across encounters in the same dungeon run.
     this.heroes = heroes;
     // Deep-copy enemies so each encounter starts with fresh HP.
-    this.enemies = enemies.map((e) => JSON.parse(JSON.stringify(e)) as Enemy);
+    this.enemies = enemies.map(cloneEnemy);
     this.partyItems = partyItems;
     this.buildTurnOrder();
   }
