@@ -640,7 +640,10 @@ export class CombatScene extends BaseScene {
   ): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.textContent = label;
-    btn.addEventListener("click", onClick);
+    btn.addEventListener("click", () => {
+      if (btn.getAttribute("aria-disabled") === "true") return;
+      onClick();
+    });
 
     const base = `
       font-family: var(--font-body, 'Cinzel', Georgia, serif);
@@ -661,7 +664,9 @@ export class CombatScene extends BaseScene {
 
     btn.style.cssText = base + (variants[variant] ?? variants.normal);
 
-    if (variant !== "disabled") {
+    if (variant === "disabled") {
+      btn.setAttribute("aria-disabled", "true");
+    } else {
       btn.addEventListener("mouseenter", () => {
         btn.style.filter = "brightness(1.25)";
       });

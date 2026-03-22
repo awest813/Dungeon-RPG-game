@@ -376,8 +376,12 @@ export class TownScene extends BaseScene {
     btnRow.style.cssText = "display:grid; grid-template-columns: repeat(3,1fr); gap:8px;";
 
     for (const upg of upgrades) {
+      const canAfford = this.options.getGold() >= upg.cost;
       const btn = document.createElement("button");
       btn.className = "es-btn";
+      if (!canAfford) {
+        btn.setAttribute("aria-disabled", "true");
+      }
       btn.style.cssText = `
         font-family: var(--font-body, 'Cinzel', Georgia, serif);
         display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -406,6 +410,7 @@ export class TownScene extends BaseScene {
         btn.style.color = "#d8ceb8";
       });
       btn.addEventListener("click", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
         const newGold = this.options.onUpgrade(upg.type);
         if (newGold < 0) {
           const orig = btn.style.borderColor;
@@ -486,7 +491,9 @@ export class TownScene extends BaseScene {
       const canAfford = this.options.getGold() >= item.cost;
 
       const btn = document.createElement("button");
-      btn.disabled = !canAfford;
+      if (!canAfford) {
+        btn.setAttribute("aria-disabled", "true");
+      }
       btn.style.cssText = `
         font-family: var(--font-body, 'Cinzel', Georgia, serif);
         display:flex; flex-direction:column; align-items:flex-start; gap:2px;
@@ -505,26 +512,27 @@ export class TownScene extends BaseScene {
         <span style="font-size:0.62rem; color:${canAfford ? "#6a6a7a" : "#3a3a3a"}; white-space:normal; line-height:1.3;">${item.description}</span>
       `;
 
-      if (canAfford) {
-        btn.addEventListener("mouseenter", () => {
-          btn.style.borderColor = "#c8963a";
-          btn.style.color = "#f0c060";
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.style.borderColor = "#5a4a1e";
-          btn.style.color = "#d8ceb8";
-        });
-        btn.addEventListener("click", () => {
-          const newGold = this.options.onBuyItem(itemId);
-          if (newGold < 0) {
-            btn.style.borderColor = "#8b1a1a";
-            setTimeout(() => { btn.style.borderColor = "#5a4a1e"; }, 700);
-            return;
-          }
-          this.removeTownUI();
-          this.showTownUI();
-        });
-      }
+      btn.addEventListener("mouseenter", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        btn.style.borderColor = "#6a5a2a";
+        btn.style.color = "#e8d8b0";
+      });
+      btn.addEventListener("mouseleave", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        btn.style.borderColor = "#4a3a1e";
+        btn.style.color = "#d8ceb8";
+      });
+      btn.addEventListener("click", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        const newGold = this.options.onBuyItem(itemId);
+        if (newGold < 0) {
+          btn.style.borderColor = "#8b1a1a";
+          setTimeout(() => { btn.style.borderColor = "#4a3a1e"; }, 700);
+          return;
+        }
+        this.removeTownUI();
+        this.showTownUI();
+      });
 
       grid.appendChild(btn);
     }
@@ -559,6 +567,9 @@ export class TownScene extends BaseScene {
       const col = rarityColors[equip.rarity] ?? "#c8a84a";
 
       const btn = document.createElement("button");
+      if (!canAfford) {
+        btn.setAttribute("aria-disabled", "true");
+      }
       btn.style.cssText = `
         font-family: var(--font-body, 'Cinzel', Georgia, serif);
         display:flex; flex-direction:column; align-items:flex-start; gap:2px;
@@ -578,26 +589,27 @@ export class TownScene extends BaseScene {
         <span style="font-size:0.62rem; color:${canAfford ? "#6a6a7a" : "#3a3a3a"}; white-space:normal; line-height:1.3;">${equip.description}</span>
       `;
 
-      if (canAfford) {
-        btn.addEventListener("mouseenter", () => {
-          btn.style.borderColor = "#7878a8";
-          btn.style.color = "#f0e8d0";
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.style.borderColor = "#3a3a5e";
-          btn.style.color = "#d8ceb8";
-        });
-        btn.addEventListener("click", () => {
-          const newGold = this.options.onBuyEquipment(equipId);
-          if (newGold < 0) {
-            btn.style.borderColor = "#8b1a1a";
-            setTimeout(() => { btn.style.borderColor = "#3a3a5e"; }, 700);
-            return;
-          }
-          this.removeTownUI();
-          this.showTownUI();
-        });
-      }
+      btn.addEventListener("mouseenter", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        btn.style.borderColor = "#7878a8";
+        btn.style.color = "#f0e8d0";
+      });
+      btn.addEventListener("mouseleave", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        btn.style.borderColor = "#3a3a5e";
+        btn.style.color = "#d8ceb8";
+      });
+      btn.addEventListener("click", () => {
+        if (btn.getAttribute("aria-disabled") === "true") return;
+        const newGold = this.options.onBuyEquipment(equipId);
+        if (newGold < 0) {
+          btn.style.borderColor = "#8b1a1a";
+          setTimeout(() => { btn.style.borderColor = "#3a3a5e"; }, 700);
+          return;
+        }
+        this.removeTownUI();
+        this.showTownUI();
+      });
 
       grid.appendChild(btn);
     }

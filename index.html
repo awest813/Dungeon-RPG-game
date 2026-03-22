@@ -108,13 +108,17 @@
       letter-spacing: 0.5px;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .es-btn:hover {
+    .es-btn:hover:not([aria-disabled="true"]) {
       background: linear-gradient(180deg, #24242e 0%, #18181f 100%);
       border-color: var(--es-gold);
       color: var(--es-gold-bright);
     }
-    .es-btn:active {
+    .es-btn:active:not([aria-disabled="true"]) {
       background: #0a0a10;
+    }
+    button:focus-visible {
+      outline: 2px solid var(--es-gold);
+      outline-offset: 2px;
     }
     .es-btn--primary {
       border-color: var(--es-gold);
@@ -130,7 +134,7 @@
       border-color: #7a2020;
       color: #c05050;
     }
-    .es-btn--disabled {
+    .es-btn--disabled, .es-btn[aria-disabled="true"] {
       color: #444450;
       border-color: #2a2a34;
       cursor: not-allowed;
