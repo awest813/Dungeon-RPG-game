@@ -393,7 +393,7 @@ export class TownScene extends BaseScene {
         cursor: pointer; border-radius: 2px;
         transition: border-color 0.15s, color 0.15s;
       `;
-      btn.title = upg.desc;
+      btn.title = canAfford ? upg.desc : `${upg.desc}\n(Not enough gold)`;
       btn.innerHTML = `
         <span style="font-size:1.1rem; line-height:1">${upg.icon}</span>
         <strong style="font-size:0.78rem;">${upg.label}</strong>
@@ -505,7 +505,7 @@ export class TownScene extends BaseScene {
         border-radius:2px; text-align:left;
         transition: border-color 0.12s, color 0.12s;
       `;
-      btn.title = item.description;
+      btn.title = canAfford ? item.description : `${item.description}\n(Not enough gold)`;
       btn.innerHTML = `
         <span style="font-weight:600; color:${canAfford ? "#c8a84a" : "#4a4a2a"};">${item.name}</span>
         <span style="color:${canAfford ? "#f0c060" : "#4a4a2a"};">◈ ${item.cost}</span>
@@ -581,7 +581,7 @@ export class TownScene extends BaseScene {
         border-radius:2px; text-align:left;
         transition: border-color 0.12s, color 0.12s;
       `;
-      btn.title = equip.description;
+      btn.title = canAfford ? equip.description : `${equip.description}\n(Not enough gold)`;
       const slotLabel = { weapon: "⚔", armour: "🛡", accessory: "💎" }[equip.slot];
       btn.innerHTML = `
         <span style="font-weight:600; color:${canAfford ? col : "#4a4a2a"};">${slotLabel} ${equip.name}</span>

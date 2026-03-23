@@ -6,7 +6,8 @@ import { CombatScene } from "./scenes/CombatScene";
 import { DungeonManager } from "./dungeon/DungeonManager";
 import { SAMPLE_HEROES } from "./data/heroes";
 import { ITEMS } from "./data/items";
-import type { Hero, Enemy } from "./types/GameTypes";
+import { EQUIPMENT } from "./data/equipment";
+import type { Hero, Enemy, Equipment, EquipSlotType } from "./types/GameTypes";
 import { cloneHero } from "./types/GameTypes";
 
 /**
