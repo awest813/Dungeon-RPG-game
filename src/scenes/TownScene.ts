@@ -302,13 +302,24 @@ export class TownScene extends BaseScene {
       chip.innerHTML = `${slotIcons[slot]} <span>${equip ? equip.name : `—`}</span>`;
 
       if (equip) {
+        chip.setAttribute("role", "button");
+        chip.setAttribute("tabindex", "0");
         chip.addEventListener("mouseenter", () => { chip.style.borderColor = "#8b1a1a"; });
         chip.addEventListener("mouseleave", () => { chip.style.borderColor = "#5a4a2e"; });
-        chip.addEventListener("click", () => {
+        chip.addEventListener("focus", () => { chip.style.outline = "2px solid #c8963a"; chip.style.outlineOffset = "2px"; });
+        chip.addEventListener("blur", () => { chip.style.outline = "none"; });
+        const unequip = () => {
           this.options.onUnequipItem(slot, hero.id);
           this.removeTownUI();
           this.pendingEquipIndex = null;
           this.showTownUI();
+        };
+        chip.addEventListener("click", unequip);
+        chip.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            unequip();
+          }
         });
       }
 
@@ -710,14 +721,25 @@ export class TownScene extends BaseScene {
         padding:4px 9px; font-size:0.72rem; color:${col};
         cursor:pointer; transition: border-color 0.12s;
       `;
+      chip.setAttribute("role", "button");
+      chip.setAttribute("tabindex", "0");
       chip.title = `${equip.description}\nClick to equip on a hero`;
       chip.innerHTML = `${slotLabel} <span style="color:#d8ceb8;">${equip.name}</span>`;
       chip.addEventListener("mouseenter", () => { chip.style.borderColor = "#7878a8"; });
       chip.addEventListener("mouseleave", () => { chip.style.borderColor = "#3a3a5e"; });
-      chip.addEventListener("click", () => {
+      chip.addEventListener("focus", () => { chip.style.outline = "2px solid #c8963a"; chip.style.outlineOffset = "2px"; });
+      chip.addEventListener("blur", () => { chip.style.outline = "none"; });
+      const selectEquip = () => {
         this.pendingEquipIndex = index;
         this.removeTownUI();
         this.showTownUI();
+      };
+      chip.addEventListener("click", selectEquip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectEquip();
+        }
       });
       grid.appendChild(chip);
     });
