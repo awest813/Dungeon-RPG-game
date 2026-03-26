@@ -1,4 +1,4 @@
-import type { Hero, Enemy, LevelUpEvent } from "../types/GameTypes";
+import type { Hero, Enemy, LevelUpEvent, Equipment } from "../types/GameTypes";
 import { cloneEnemy } from "../types/GameTypes";
 import { SAMPLE_ENEMIES } from "../data/enemies";
 import { EQUIPMENT, EQUIP_DROP_POOL, EQUIP_DROP_CHANCE } from "../data/equipment";
