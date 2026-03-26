@@ -538,10 +538,12 @@ export class CombatScene extends BaseScene {
         }
       });
 
-      if (onCd) {
+      if (skill) {
+        btn.title = onCd
+          ? `${skill.description}\n(On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining)`
+          : skill.description;
+      } else if (onCd) {
         btn.title = `On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining`;
-      } else if (skill) {
-        btn.title = skill.description;
       }
 
       row.appendChild(btn);
