@@ -539,7 +539,7 @@ export class CombatScene extends BaseScene {
       });
 
       if (onCd) {
-        btn.title = `On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining`;
+        btn.title = skill ? `${skill.description}\n(On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining)` : `On cooldown: ${cd} turn${cd !== 1 ? "s" : ""} remaining`;
       } else if (skill) {
         btn.title = skill.description;
       }
