@@ -1,3 +1,7 @@
 ## 2024-03-21 - Replace JSON.parse(JSON.stringify) with manual clone
 **Learning:** The codebase heavily relied on `JSON.parse(JSON.stringify(...))` for deep copying `Hero` and `Enemy` objects in multiple places (`Game.ts`, `CombatManager.ts`, `DungeonManager.ts`). This is a known performance anti-pattern. Benchmarks showed that a manual deep copy function is ~25x faster (10ms vs 250ms for 100k iterations). `structuredClone` was also tested but proved to be slower than `JSON` in this specific node environment (415ms).
 **Action:** When deep copying complex domain objects with known shapes (like `Hero` or `Enemy`), prefer manual spread-based cloning functions over `JSON.parse(JSON.stringify)`. `structuredClone` should also be benchmarked before blindly adopting it, as its performance can vary depending on the environment and object structure.
+
+## 2024-03-28 - Share Babylon.js Materials Instead of Instantiating Per-Mesh
+**Learning:** Instantiating `new StandardMaterial` inside iterative loops (e.g. `forEach` to spawn `hero` or `enemy` meshes) leads to an anti-pattern. Babylon.js has to allocate extra resources and trigger a new compilation for each material, increasing WebGL draw calls and creating performance overhead, especially in dense loops like combat spawns.
+**Action:** When creating Babylon.js meshes for multiple similar entities, instantiate a single `StandardMaterial` singleton outside the loop and share it across all corresponding meshes.
