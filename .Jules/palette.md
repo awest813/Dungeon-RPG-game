@@ -1,3 +1,6 @@
 ## 2024-03-23 - Explaining Disabled UI States
 **Learning:** Tooltips on disabled buttons (`aria-disabled="true"`) need to provide context for *why* they are disabled. In the shop UI, adding explicit reasons (e.g., "(Not enough gold)") directly to the button title significantly improves the user experience by clarifying system state, rather than just relying on the grayed-out visual indicator.
 **Action:** When creating or modifying disabled UI elements, always ensure there is an accessible explanation for the disabled state. Use `aria-disabled="true"` to keep the element focusable and append the reason to the element's `title` or `aria-label`.
+## 2024-05-18 - Preserving Context in Disabled States
+**Learning:** When an action (like a skill or ability) is disabled due to a state like a cooldown, replacing the entire tooltip with just the disabled reason removes important context. Users may want to read what a skill does to plan their future turns, even if they can't use it right now.
+**Action:** Tooltips for disabled states should always preserve the original context/description of the item, while explicitly appending the reason for the disabled state (e.g., "(On cooldown: 2 turns remaining)").
