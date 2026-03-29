@@ -142,30 +142,35 @@ export class CombatScene extends BaseScene {
     const heroes  = this.manager.getHeroes();
     const enemies = this.manager.getEnemies();
 
+    // ⚡ Bolt Optimization: Instantiate reusable StandardMaterial singletons for heroes and enemies
+    // instead of creating unique material objects for each individual mesh. This optimizes WebGL draw
+    // calls and reduces memory overhead.
+    const heroSharedMat = new StandardMaterial("mat_hero_shared", this.scene);
+    heroSharedMat.diffuseColor  = new Color3(0.2, 0.38, 0.65);
+    heroSharedMat.specularColor = new Color3(0.5, 0.6, 0.8);
+    heroSharedMat.specularPower = 32;
+
+    const enemySharedMat = new StandardMaterial("mat_enemy_shared", this.scene);
+    enemySharedMat.diffuseColor  = new Color3(0.65, 0.12, 0.12);
+    enemySharedMat.specularColor = new Color3(0.6, 0.2, 0.2);
+    enemySharedMat.specularPower = 16;
+
     // Hero meshes — blue steel tint, slightly taller
     heroes.forEach((h, i) => {
-      const mat = new StandardMaterial(`mat_${h.id}`, this.scene);
-      mat.diffuseColor  = new Color3(0.2, 0.38, 0.65);
-      mat.specularColor = new Color3(0.5, 0.6, 0.8);
-      mat.specularPower = 32;
       const box = MeshBuilder.CreateBox(h.id, { height: 2.0, width: 0.9, depth: 0.6 }, this.scene);
       // Dynamic centering: keep heroes well left of center, spaced evenly
       const spacing = 2.0;
       const startX = -((heroes.length - 1) * spacing) / 2 - 2.5;
       box.position.set(startX + i * spacing, 1.0, 0);
-      box.material = mat;
+      box.material = heroSharedMat;
       this.combatantMeshes.set(h.id, box);
     });
 
     // Enemy meshes — blood red, slightly menacing
     enemies.forEach((e, i) => {
-      const mat = new StandardMaterial(`mat_${e.id}`, this.scene);
-      mat.diffuseColor  = new Color3(0.65, 0.12, 0.12);
-      mat.specularColor = new Color3(0.6, 0.2, 0.2);
-      mat.specularPower = 16;
       const box = MeshBuilder.CreateBox(e.id, { height: 2.0, width: 0.9, depth: 0.6 }, this.scene);
       box.position.set(3 + i * 2.2, 1.0, 0);
-      box.material = mat;
+      box.material = enemySharedMat;
       this.combatantMeshes.set(e.id, box);
     });
   }
